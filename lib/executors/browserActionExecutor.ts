@@ -1,4 +1,3 @@
-import { io } from 'socket.io-client';
 import type { BrowserAction, SocketMessage } from '../types/socket';
 import { SocketManager } from '../websocket/WebSocketManager';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,7 +23,7 @@ export class BrowserActionExecutor {
         action.timeout = 30000; // Default 30 seconds
       }
 
-      // Execute action through WebSocket
+      // Execute action through WebSocket to extension
       const response = await this.socketManager.executeAction({
         type: 'EXECUTE_ACTION',
         id: uuidv4(),

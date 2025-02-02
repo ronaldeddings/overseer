@@ -70,10 +70,10 @@ Below is a simplified diagram of Overseer's monolithic approach (MVP).
 ```
 ┌─────────────────────────────────────┐
 │             Overseer UI            │ (Next.js + React + React Flow)
-│    e.g., https://overseer.app/     │
+│    e.g., https://overseer.app/    │
 └───────────────┬────────────────────┘
                 │
-                ▼  HTTP (REST) / WebSockets
+                ▼  HTTP (REST)
 ┌─────────────────────────────────────┐
 │     Next.js API / Workflow Engine  │
 │   (in-process TypeScript modules)  │
@@ -85,7 +85,7 @@ Below is a simplified diagram of Overseer's monolithic approach (MVP).
        │  (Workflows, Logs)    │
        └───────────────────────┘
                 │
-                ▼ WebSocket
+                ▼ WebSocket (Socket.IO)
 ┌─────────────────────────────────────┐
 │    Chrome Extension (Manifest V3)  │
 │   - background.js / content.js     │
@@ -96,13 +96,42 @@ Below is a simplified diagram of Overseer's monolithic approach (MVP).
 ### How it works (MVP flow)
 
 1. **User** creates or edits a workflow in the React Flow editor. The JSON config is saved to Postgres.  
-2. **User** triggers a workflow manually (or via schedule).  
-3. **Engine** (TypeScript) fetches workflow JSON, executes each node.  
+2. **User** triggers a workflow manually (or via schedule) via HTTP POST to `/api/execute/[id]`.  
+3. **Engine** (TypeScript) fetches workflow JSON, executes each node:  
    - **API call nodes**: perform HTTP requests.  
    - **Code nodes**: run JavaScript/TypeScript transforms.  
    - **Browser Action nodes**: send WebSocket instructions to the Chrome Extension.  
 4. **Logs** stored in Postgres for each step, including errors.  
 5. (Optional) A schedule runs workflows automatically at set intervals.
+
+### Recent Architecture Updates
+
+The project has been updated to use a more focused WebSocket architecture:
+
+1. **Web UI to Server Communication**
+   - Removed WebSocket connections from the web UI
+   - All communication now happens via HTTP endpoints
+   - Workflow execution triggered through `/api/execute/[id]` endpoint
+
+2. **Server to Extension Communication**
+   - WebSocket connections (Socket.IO) restricted to Chrome extension only
+   - Server validates connection origins
+   - Maintains real-time communication for browser automation
+   - Extension receives commands and sends results via WebSocket
+
+3. **Benefits of the Change**
+   - Cleaner architecture with clear separation of concerns
+   - Reduced complexity in web UI
+   - WebSocket connections only used where necessary
+   - Improved security with origin validation
+   - More efficient resource usage
+
+4. **Communication Flow**
+   ```
+   Web UI → HTTP → Server → WebSocket → Extension
+                     ↑          ↓
+                  Postgres   Results
+   ```
 
 ---
 

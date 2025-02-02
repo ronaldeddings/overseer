@@ -41,7 +41,11 @@ export default function handler(
           pingTimeout: 60000,
           pingInterval: 25000,
           cors: {
-            origin: '*',
+            origin: (requestOrigin, callback) => {
+              // Only allow Chrome extension origins
+              const isAllowed = requestOrigin?.startsWith('chrome-extension://') ?? false;
+              callback(null, isAllowed);
+            },
             methods: ['GET', 'POST'],
             credentials: true,
             allowedHeaders: ['Content-Type', 'Accept']
@@ -51,23 +55,26 @@ export default function handler(
         });
 
         io.on('connection', (socket) => {
-          const clientType = socket.handshake.headers.origin?.startsWith('chrome-extension://')
-            ? 'extension'
-            : 'web';
+          // Only handle extension connections
+          if (!socket.handshake.headers.origin?.startsWith('chrome-extension://')) {
+            console.log('Rejecting non-extension connection');
+            socket.disconnect(true);
+            return;
+          }
           
-          console.log(`Client connected (${clientType}):`, socket.id);
+          console.log('Extension connected:', socket.id);
           
           socket.on('message', (data) => {
-            console.log(`Received message from client (${clientType}):`, data);
+            console.log('Received message from extension:', data);
             socket.emit('message', data);
           });
 
           socket.on('disconnect', (reason) => {
-            console.log(`Client disconnected (${clientType}):`, socket.id, reason);
+            console.log('Extension disconnected:', socket.id, reason);
           });
 
           socket.on('error', (error) => {
-            console.error(`Socket error (${clientType}):`, error);
+            console.error('Socket error:', error);
           });
 
           // Send initial connection acknowledgment
