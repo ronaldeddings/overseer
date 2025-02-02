@@ -1,0 +1,56 @@
+---
+description: 
+globs: /**/*.{js,ts,jsx,tsx}
+---
+# Core Standards
+1. Must use TypeScript for all new files; if an older JS file is updated, convert or add type definitions.
+2. Strict mode is mandatory (\"strict\": true in tsconfig). No implicit any, strict null checks, etc.
+3. ESLint + Prettier are enforced. All code must pass lint checks. No disabling or ignoring eslint rules except for very narrow, justifiable cases.
+4. Each file should have a single primary export. Avoid default exports unless strongly justified.
+
+# Code Organization
+5. Next.js: Place API routes in /pages/api or /app directory (if using the app router). Keep React Flow components in /components or /lib as appropriate.
+6. Maintain consistent naming: use PascalCase for React components, camelCase for variables/functions, UPPER_CASE for constants.
+7. Do not store unrelated logic in monolithic files; break out utility or helper functions into /lib or /utils modules for clarity.
+8. Always isolate side-effects. Keep business logic separate from UI components where possible.
+
+# Type System & Interfaces
+9. Use interfaces (or type aliases) for object shapes. Avoid inline object definitions if they are used more than once.
+10. If using generics, ensure type parameters are well-named (e.g., T, U, V or something descriptive).
+11. No 'any' or 'unknown' types unless strictly necessary (and if used, must comment the rationale).
+12. Use 'readonly' for data structures not meant to be mutated.
+
+# Testing
+13. All new features must include unit or integration tests in __tests__, or a similarly recognized testing folder.
+14. Must use a consistent test runner (Jest, or if using something like Bun test, be explicit).
+15. Aim for high coverage on core logic (engine, sub-workflows, node types).
+16. Write security-related tests (e.g., ensuring safe handling of inputs) for any new feature or node type.
+    
+# Error Handling & Logs
+17. No silent catch blocks; always handle or rethrow errors. Must log or propagate them meaningfully.
+18. Use typed error classes when possible (e.g., class WorkflowError extends Error { ... }).
+19. For Next.js API routes, return standardized JSON error responses with proper HTTP status codes.
+20. Do not console.log secrets or sensitive data. If debugging, remove logs prior to merging.
+
+# Security Requirements
+21. Always validate input from external sources (API requests, user input). If you’re uncertain, add code to sanitize or at least note the risk.
+22. Use environment variables for secrets (never hardcode them). Access them through process.env with fallback checks if needed.
+23. For the Chrome extension, request the minimal set of permissions and scope only the required domains if possible.
+24. No generation of obvious vulnerabilities or questionable content (e.g., hidden scripts, bypassing validations). Refuse or rectify if requested.
+
+# Performance & Scalability
+25. Use efficient patterns for concurrency or parallel tasks. If a solution can degrade performance significantly, add a comment with caution notes.
+26. Do not introduce blocking I/O on the main thread in Next.js. Use async/await properly.
+27. For large data sets or loops, consider streaming or pagination strategies to avoid memory bloat.
+
+# Documentation
+28. Use TSDoc or inline comments to describe function parameters, return types, edge cases, and security concerns.
+29. If a function has side effects or modifies state, explicitly document that behavior.
+30. Keep README or docs updated when changes affect the workflow engine, node types, or extension architecture.
+
+# Additional Conventions
+31. No usage of 'var'. Use const or let.
+32. No polyfills for modern APIs unless necessary for broader browser support in the extension. Next.js environment is typically evergreen.
+33. Keep lines under 120 characters for readability (or 100 if strictly required).
+34. Named exports only for React components (no default exports). Non-React code can use default exports if well justified.
+35. If you are unsure how to implement something securely or correctly, provide clarifying questions or disclaimers rather than guessing.

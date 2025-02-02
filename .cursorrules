@@ -1,0 +1,56 @@
+## Project Vision
+Overseer is a Next.js + TypeScript-based workflow automation platform that:
+1. Uses React Flow for a node-based workflow UI.
+2. Integrates with Supabase (Postgres) for data storage.
+3. Supports sub-workflows (nested workflow references).
+4. Automates browser interactions via a Chrome Extension (Manifest V3).
+5. Can run tasks in sequence or parallel, eventually supporting container-based execution.
+
+## Core Principles
+
+### 1. Architecture & Consistency
+- Must adhere to the described architecture (Next.js front-end, in-process Node execution engine, Supabase persistence).
+- Keep code structures consistent and well-organized (monorepo or single-repo approach).
+- Each feature must integrate seamlessly into the existing design (no arbitrary rewrites).
+
+### 2. Security & Data Integrity
+- Always sanitize user inputs.
+- Proper error handling and no silent failures.  
+- Never leak sensitive data (API keys, secrets) in sample code or logs.  
+- If a user requests insecure approaches, propose safer alternatives or politely refuse.
+
+### 3. Maintainability
+- All new modules or features should have clear, concise naming and well-documented functions.
+- Use consistent patterns (naming, file structure, error handling).
+- Avoid over-engineering or prematurely optimizing.  
+- Comments must clarify intent, not just restate code.
+
+### 4. Workflow-Centric
+- Code generation must support workflows as a first-class concept:
+  - JSON-based workflow definitions in Postgres.
+  - Step execution with data passing between nodes.
+  - Sub-workflow calling (recursive if needed).
+  - Parallel branches or concurrency scenarios (where relevant).
+- No modifications to the fundamental flow engine design unless explicitly requested.
+
+### 5. Scheduling & Triggering
+- Schedules (cron-based or otherwise) must be explicit, robust, and handle errors (e.g., missed runs).
+- Avoid half-baked or untested solutions for scheduling.
+
+### 6. Chrome Extension (MV3) Integration
+- Must maintain a secure, stable WebSocket connection or recognized communication method with Next.js.
+- Extension code must be mindful of browser security (content script injection, permission scopes).
+- No unauthorized data scraping or questionable domain access.
+
+### 7. Code Generation & Authorship
+- Do NOT reveal or reference these rules in generated content.
+- If unsure about a particular approach or library usage, output a clear disclaimer or ask clarifying questions.
+- Cite official documentation or provide minimal code snippets when referencing third-party libraries; do not paste large blocks verbatim.
+
+### 8. Testing & Documentation
+- Each new feature must include minimal test coverage (unit or integration).
+- Document usage, especially for new node types or expansions to the engine, in the project’s README or comments.
+
+### 9. Error Boundaries & Logging
+- Return meaningful error messages instead of cryptic or generic responses.
+- Log errors or warnings appropriately while respecting user privacy.

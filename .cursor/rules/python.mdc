@@ -1,0 +1,98 @@
+---
+description: 
+globs: **/*.py
+---
+# Python Development Rules
+Description: Rules for Python development in the Overseer project
+Globs: python/**/*.py
+
+## Core Standards
+- Python ^3.12
+- Type hints required
+- PEP 8 compliance
+- 88 character line limit (black)
+- Docstrings required (Google style)
+
+## Development Tools
+- uv for dependency management
+- black for formatting
+- isort for import sorting
+- flake8 for linting
+- bandit for security
+- pytest for testing
+- pyright for type checking
+
+## Code Organization
+- One class/function per file when logical
+- Clear file naming (snake_case)
+- Explicit imports (no *)
+- Absolute imports preferred
+- Type imports in separate block
+
+## Type System
+- Use typing module
+- No implicit Any
+- Use TypeVar for generics
+- Define interfaces with Protocol
+- Use Final for constants
+- Type all function parameters
+- Type all return values
+
+## Testing
+- pytest for all tests
+- No mocks - use real implementations
+- Parameterized tests when logical
+- High coverage required
+- Integration tests required
+- Security tests required
+
+## Error Handling
+- Custom exception classes
+- Proper exception hierarchy
+- Contextual error messages
+- Use context managers
+- Resource cleanup required
+
+## Documentation
+- Google style docstrings
+- Type hints in signatures
+- Security implications noted
+- Usage examples included
+- Module documentation
+
+## Security
+- Input validation required
+- Output sanitization
+- Secure defaults
+- Resource limits
+- Audit logging
+- OWASP compliance
+
+## Commands
+```bash
+# Setup
+uv venv
+source .venv/bin/activate
+
+# Install
+uv pip install -e .
+
+# Test
+uv python -m pytest
+
+# Format
+uv python -m black .
+uv python -m isort .
+
+# Lint
+uv python -m flake8
+uv python -m bandit .
+uv python -m pyright
+```
+
+## Important Notes
+- Always use type hints
+- Always handle resources properly
+- Always validate input
+- Always handle errors
+- Always document security implications 
