@@ -1,0 +1,22 @@
+{
+  "name": "overseer-extension",
+  "version": "1.0.0",
+  "description": "Browser automation extension for Overseer",
+  "scripts": {
+    "build": "tsc && npx webpack --config webpack.config.js",
+    "watch": "tsc -w",
+    "dev": "npx webpack --config webpack.config.js --watch"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.262",
+    "@types/node": "^20.11.28",
+    "copy-webpack-plugin": "^12.0.2",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.2",
+    "webpack": "^5.90.3",
+    "webpack-cli": "^5.1.4"
+  }
+}

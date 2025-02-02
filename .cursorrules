@@ -1,6 +1,6 @@
 ## Project Vision
 Overseer is a Next.js + TypeScript-based workflow automation platform that:
-1. Uses React Flow for a node-based workflow UI.
+1. Uses React Flow for a node-based workflow UI. For any other component use shadcn. Along the way everything should be styled with React Flow, shadcn, and tailwindcss.
 2. Integrates with Supabase (Postgres) for data storage.
 3. Supports sub-workflows (nested workflow references).
 4. Automates browser interactions via a Chrome Extension (Manifest V3).
@@ -8,10 +8,68 @@ Overseer is a Next.js + TypeScript-based workflow automation platform that:
 
 ## Core Principles
 
+### Project Structure
+
+Folder layout (changes require approval):
+
+```
+overseer/
+├── README.md                 # This document
+├── package.json             # Project dependencies and scripts
+├── next.config.js          # Next.js configuration
+├── tsconfig.json           # TypeScript configuration
+├── tailwind.config.ts      # Tailwind CSS configuration
+├── postcss.config.js       # PostCSS configuration
+├── .env.example            # Template for environment variables
+├── .env                    # Environment variables for local dev
+├── supabase/              # Supabase configuration
+│   ├── migrations/        # Database migrations
+│   │   └── 20240319000000_initial_schema.sql  # Initial schema
+│   └── config.toml       # Supabase configuration
+├── .vscode/              # VS Code settings
+│   └── settings.json     # Deno settings for Supabase
+├── /pages                  # Next.js Pages Router
+│   ├── _app.tsx            # Global app wrapper with Toaster and Navbar
+│   ├── _document.tsx       # Custom document setup
+│   ├── index.tsx           # Landing page
+│   ├── workflows/
+│   │   ├── index.tsx       # Workflows list with CRUD operations
+│   │   └── [id].tsx        # React Flow editor for a workflow
+│   └── api/
+│       ├── workflows/
+│       └── execute/
+├── /components            
+│   ├── /layout            # Layout components
+│   │   └── navbar.tsx     # Main navigation bar
+│   ├── /ui                # shadcn/ui components
+│   │   ├── button.tsx     # Button component
+│   │   ├── toast.tsx      # Toast notifications
+│   │   ├── alert-dialog.tsx # Confirmation dialogs
+│   │   ├── sheet.tsx      # Sheet component for mobile nav
+│   │   └── ...           # Other components
+│   └── /workflows        
+│       ├── WorkflowEditor.tsx  # React Flow editor wrapper
+│       ├── NodeConfigPanel.tsx # Side panel for node configuration
+│       └── /nodes         # Node type components
+│           ├── ApiCallNode.tsx      # API call node
+│           ├── CodeTransformNode.tsx # Code transform node
+│           └── BrowserActionNode.tsx # Browser action node
+├── /hooks               # Custom React hooks
+│   └── use-toast.ts    # Toast notifications hook
+├── /lib                  
+│   ├── utils.ts          # Helper functions for UI components
+│   └── supabase.ts       # Supabase client and workflow CRUD operations
+├── /styles              
+│   └── globals.css       # Global styles and shadcn theme
+└── /chrome-extension    
+    └── manifest.json     # Extension configuration
+```
+
 ### 1. Architecture & Consistency
 - Must adhere to the described architecture (Next.js front-end, in-process Node execution engine, Supabase persistence).
 - Keep code structures consistent and well-organized (monorepo or single-repo approach).
 - Each feature must integrate seamlessly into the existing design (no arbitrary rewrites).
+- NEVER remove functionality, libraries, or documentation without asking for permission first.
 
 ### 2. Security & Data Integrity
 - Always sanitize user inputs.
@@ -49,8 +107,82 @@ Overseer is a Next.js + TypeScript-based workflow automation platform that:
 
 ### 8. Testing & Documentation
 - Each new feature must include minimal test coverage (unit or integration).
-- Document usage, especially for new node types or expansions to the engine, in the project’s README or comments.
+- Document usage, especially for new node types or expansions to the engine, in the project's README or comments.
+- Testing must follow these guidelines:
+  - Use Jest and React Testing Library as the primary testing frameworks.
+  - Place all test files in the `__tests__` directory with `.test.ts` or `.test.tsx` extensions.
+  - Mock external dependencies and complex components appropriately:
+    - Use Jest's mock functions for Supabase client and API calls.
+    - Mock UI components to their simplest form (e.g., Button -> button).
+    - Mock styles and CSS imports to empty objects.
+  - Include setup files in `__tests__/setup.ts` for global mocks and configurations.
+  - Test files should mirror the structure they're testing:
+    - `projectSetup.test.ts` for configuration tests
+    - `database.test.ts` for Supabase/database tests
+    - `workflowBuilder.test.tsx` for UI component tests
+  - Wrap React component updates in `act()` when testing state changes.
+  - Use proper assertions:
+    - Configuration tests should verify existence and correct values
+    - Database tests should verify schema and JSON operations
+    - UI tests should verify rendering, user interactions, and state updates
 
 ### 9. Error Boundaries & Logging
 - Return meaningful error messages instead of cryptic or generic responses.
 - Log errors or warnings appropriately while respecting user privacy.
+
+### 10. State Management & Data Flow
+- Follow these patterns for React components that manage data:
+  - Use clear, typed interfaces for component props and data structures
+  - Implement optimistic UI updates for better user experience
+  - Handle loading states explicitly with visual feedback
+  - Use toast notifications for operation feedback
+  - Implement proper error boundaries and error handling
+
+### 11. Database Operations
+- When implementing database operations:
+  - Define clear type interfaces for database models
+  - Implement CRUD operations in a dedicated client file (e.g., `lib/supabase.ts`)
+  - Handle all database errors explicitly and throw them for proper handling
+  - Use proper TypeScript types for database models and operations
+  - Include proper timestamps (`created_at`, `updated_at`) in database models
+  - For Supabase specifically:
+    - Always use migrations for schema changes
+    - Follow the 20240319000000_initial_schema.sql pattern for migration files
+    - Include proper indexes for frequently queried fields
+    - Use appropriate Postgres extensions (e.g., uuid-ossp)
+    - Implement database triggers for automated timestamps
+    - Use jsonb for flexible JSON storage (e.g., workflow definitions)
+    - Implement proper foreign key constraints with ON DELETE rules
+    - Store environment variables according to Supabase's format:
+      - NEXT_PUBLIC_SUPABASE_URL for client access
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY for anonymous operations
+      - SUPABASE_SERVICE_ROLE_KEY for privileged operations
+      - DATABASE_URL for direct database access when needed
+
+### 12. Component Design Patterns
+- When designing React components that handle data:
+  - Split complex UIs into smaller, focused components
+  - Use composition for reusable UI elements
+  - Implement proper loading and empty states
+  - Add confirmation dialogs for destructive actions
+  - Use proper accessibility attributes (e.g., `sr-only` for screen readers)
+  - Follow a consistent styling pattern (e.g., shadcn + tailwind)
+    - use npx shadcn@latest add <component> to add a new component
+      Please note npx shadcn-ui is nto the correct command... npx shadcn@latest is the correct...
+
+### 13. Form and Input Handling
+- For components with user input:
+  - Implement immediate validation where appropriate
+  - Provide clear visual feedback for user actions
+  - Use controlled components for form inputs
+  - Implement proper input sanitization
+  - Handle all possible input states (empty, loading, error, success)
+
+### 14. UI/UX Best Practices
+- When implementing user interfaces:
+  - Use consistent spacing and layout patterns
+  - Implement proper loading states with skeleton loaders or spinners
+  - Add confirmation dialogs for destructive actions
+  - Use toast notifications for operation feedback
+  - Ensure all interactive elements are keyboard accessible
+  - Use proper color contrast for text and interactive elements
