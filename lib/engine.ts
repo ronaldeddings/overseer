@@ -37,10 +37,39 @@ export class WorkflowEngine {
     this.nodeExecutors.set(executor.type, executor);
   }
 
-  // Get the next nodes to execute based on current node and edges
-  private getNextNodes(currentNodeId: string, nodes: Node[], edges: Edge[]): Node[] {
-    const outgoingEdges = edges.filter(edge => edge.source === currentNodeId);
+  // Get all input nodes that connect to this node
+  private getInputNodes(nodeId: string, nodes: Node[], edges: Edge[]): Node[] {
+    const incomingEdges = edges.filter(edge => edge.target === nodeId);
+    return nodes.filter(node => incomingEdges.some(edge => edge.source === node.id));
+  }
+
+  // Get all output nodes that this node connects to
+  private getOutputNodes(nodeId: string, nodes: Node[], edges: Edge[]): Node[] {
+    const outgoingEdges = edges.filter(edge => edge.source === nodeId);
     return nodes.filter(node => outgoingEdges.some(edge => edge.target === node.id));
+  }
+
+  // Get nodes that have no incoming edges
+  private getStartNodes(nodes: Node[], edges: Edge[]): Node[] {
+    return nodes.filter(node => !edges.some(edge => edge.target === node.id));
+  }
+
+  // Create a context specific to a node with only its input nodes' results
+  private createNodeContext(node: Node, context: WorkflowExecutionContext): WorkflowExecutionContext {
+    const inputNodes = this.getInputNodes(node.id, context.nodes, context.edges);
+    const nodeResults: Record<string, any> = {};
+    
+    // Only include results from direct input nodes
+    inputNodes.forEach(inputNode => {
+      if (context.nodeResults[inputNode.id] !== undefined) {
+        nodeResults[inputNode.id] = context.nodeResults[inputNode.id];
+      }
+    });
+
+    return {
+      ...context,
+      nodeResults
+    };
   }
 
   // Execute a single node
@@ -55,7 +84,11 @@ export class WorkflowEngine {
     }
 
     try {
-      const result = await executor.execute(node, context);
+      // Create a node-specific context with only its input nodes' results
+      const nodeContext = this.createNodeContext(node, context);
+      console.log(`Executing node ${node.id} with inputs:`, nodeContext.nodeResults);
+      
+      const result = await executor.execute(node, nodeContext);
       return result;
     } catch (error) {
       throw new Error(`Error executing node ${node.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -102,33 +135,42 @@ export class WorkflowEngine {
     };
 
     try {
-      // Find start nodes (nodes with no incoming edges)
-      const startNodes = workflow.definition.nodes.filter((node: Node) => 
-        !workflow.definition.edges.some((edge: Edge) => edge.target === node.id)
-      );
-
+      // Track executed nodes to prevent cycles
+      const executedNodes = new Set<string>();
+      
+      // Get start nodes (nodes with no incoming edges)
+      const startNodes = this.getStartNodes(workflow.definition.nodes, workflow.definition.edges);
+      
+      // Function to execute a node and its descendants
+      const executeNodeAndDescendants = async (node: Node) => {
+        if (executedNodes.has(node.id)) {
+          return; // Skip if already executed
+        }
+        
+        // Get input nodes and ensure they're all executed
+        const inputNodes = this.getInputNodes(node.id, context.nodes, context.edges);
+        for (const inputNode of inputNodes) {
+          if (!executedNodes.has(inputNode.id)) {
+            await executeNodeAndDescendants(inputNode);
+          }
+        }
+        
+        // Execute current node
+        context.currentNodeId = node.id;
+        const result = await this.executeNode(node, context);
+        context.nodeResults[node.id] = result;
+        executedNodes.add(node.id);
+        
+        // Execute output nodes
+        const outputNodes = this.getOutputNodes(node.id, context.nodes, context.edges);
+        for (const outputNode of outputNodes) {
+          await executeNodeAndDescendants(outputNode);
+        }
+      };
+      
       // Execute workflow starting from each start node
       for (const startNode of startNodes) {
-        context.currentNodeId = startNode.id;
-        await this.logExecution(context);
-
-        let currentNodes = [startNode];
-        while (currentNodes.length > 0) {
-          const nextNodes: Node[] = [];
-          
-          // Execute current level nodes
-          for (const node of currentNodes) {
-            context.currentNodeId = node.id;
-            const result = await this.executeNode(node, context);
-            context.nodeResults[node.id] = result;
-            
-            // Get next nodes to execute
-            const nodeNextNodes = this.getNextNodes(node.id, workflow.definition.nodes, workflow.definition.edges);
-            nextNodes.push(...nodeNextNodes);
-          }
-          
-          currentNodes = nextNodes;
-        }
+        await executeNodeAndDescendants(startNode);
       }
 
       context.status = 'completed';

@@ -455,6 +455,7 @@ Below is a more granular set of tasks for you (and your AI pair) to tackle **one
 7. **Basic Scheduling** (Optional in MVP)  
    - [ ] If included, add `scheduler.ts` using `node-cron` (or external triggers)  
    - [ ] On server startup, schedule workflows that have a cron definition
+   - [ ] Create unit tests for the scheduling system
 
 ### Phase 2 (Enhanced Features)
 
