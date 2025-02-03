@@ -163,6 +163,42 @@ The project has been updated to use a more focused WebSocket architecture:
    - Added result validation to ensure it's properly set
    - Improved error messages for common issues
 
+#### Basic Scheduling Implementation
+1. **Workflow Scheduler Service**
+   - Added `WorkflowScheduler` class for managing cron jobs
+   - Implemented workflow scheduling with `node-cron`
+   - Added methods for scheduling, stopping, and managing workflow jobs
+   - Created singleton instance for app-wide scheduling
+
+2. **Custom Server Integration**
+   - Added custom Next.js server setup in `server.ts`
+   - Integrated scheduler initialization on server startup
+   - Configured TypeScript for server with `tsconfig.server.json`
+   - Updated npm scripts to use custom server
+
+3. **Testing Infrastructure**
+   - Added comprehensive tests for scheduler functionality
+   - Implemented proper mocking for Supabase and cron jobs
+   - Added test cases for:
+     - Workflow initialization
+     - Job scheduling and management
+     - Error handling
+     - Job cleanup
+
+4. **Dependencies Added**
+   - Added `cron` for job scheduling
+   - Added `@types/cron` for TypeScript support
+   - Added `ts-node` for running TypeScript server
+
+5. **Usage**
+   ```typescript
+   // Workflow scheduling is automatic for any workflow with a schedule
+   // Example cron expressions:
+   "0 * * * *"    // Every hour
+   "*/15 * * * *" // Every 15 minutes
+   "0 0 * * *"    // Every day at midnight
+   ```
+
 ---
 
 ## Tech Stack
@@ -453,9 +489,13 @@ Below is a more granular set of tasks for you (and your AI pair) to tackle **one
    - [x] Testing infrastructure for extension
 
 7. **Basic Scheduling** (Optional in MVP)  
-   - [ ] If included, add `scheduler.ts` using `node-cron` (or external triggers)  
-   - [ ] On server startup, schedule workflows that have a cron definition
-   - [ ] Create unit tests for the scheduling system
+   - [x] Add `scheduler.ts` using `node-cron`
+   - [x] On server startup, schedule workflows that have a cron definition
+   - [x] Create unit tests for the scheduling system
+   - [x] Add custom server setup for scheduler initialization
+   - [x] Implement job management (start/stop/update)
+   - [x] Add proper error handling and logging
+   - [x] Support timezone configuration (UTC)
 
 ### Phase 2 (Enhanced Features)
 

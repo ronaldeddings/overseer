@@ -36,8 +36,9 @@ overseer/
 │   │   ├── index.tsx       # Workflows list with CRUD operations
 │   │   └── [id].tsx        # React Flow editor for a workflow
 │   └── api/
-│       ├── workflows/
-│       └── execute/
+│       ├── workflows/      # Workflow CRUD endpoints
+│       ├── execute/        # Workflow execution endpoint
+│       └── ws.ts          # WebSocket endpoint for extension
 ├── /components            
 │   ├── /layout            # Layout components
 │   │   └── navbar.tsx     # Main navigation bar
@@ -58,11 +59,52 @@ overseer/
 │   └── use-toast.ts    # Toast notifications hook
 ├── /lib                  
 │   ├── utils.ts          # Helper functions for UI components
-│   └── supabase.ts       # Supabase client and workflow CRUD operations
+│   ├── supabase.ts       # Supabase client and workflow CRUD operations
+│   ├── /engine           # Workflow execution engine
+│   │   ├── WorkflowEngine.ts  # Main engine implementation
+│   │   └── types.ts      # Engine type definitions
+│   ├── /executors        # Node type executors
+│   │   ├── ApiCallExecutor.ts    # API call execution
+│   │   ├── CodeTransformExecutor.ts # Code transform execution
+│   │   └── BrowserActionExecutor.ts # Browser action execution
+│   ├── /websocket        # WebSocket handling
+│   │   ├── WebSocketManager.ts   # WebSocket connection manager
+│   │   └── types.ts      # WebSocket message types
+│   ├── /types            # Shared TypeScript types
+│   └── /types            # Shared TypeScript types
 ├── /styles              
 │   └── globals.css       # Global styles and shadcn theme
-└── /chrome-extension    
-    └── manifest.json     # Extension configuration
+├── /chrome-extension     # Chrome extension (Manifest V3)
+│   ├── src/             # Extension source code
+│   │   ├── types.ts     # Shared type definitions
+│   │   ├── background.ts # Background script with WebSocket
+│   │   └── contentScript.ts # Content script for DOM operations
+│   ├── dist/            # Build output directory
+│   ├── manifest.json    # Extension manifest
+│   ├── package.json    # Extension dependencies and scripts
+│   └── tsconfig.json   # Extension TypeScript configuration
+└── /__tests__          # Test files
+    ├── setup.ts        # Test setup and global mocks
+    ├── engine.test.ts  # Engine unit tests
+    ├── websocket.test.ts # WebSocket tests
+    └── workflowBuilder.test.tsx # UI component tests
+```
+
+### Testing
+
+The project uses Jest and React Testing Library for testing. The test setup includes:
+
+```
+overseer/
+├── __tests__/           # Test files directory
+│   ├── setup.ts         # Test setup and global mocks
+│   ├── projectSetup.test.ts    # Configuration tests
+│   ├── database.test.ts        # Database integration tests
+│   ├── engine.test.ts         # Workflow engine tests
+│   ├── api/
+│   │   └── execute.test.ts    # API endpoint tests
+│   └── workflowBuilder.test.tsx # UI component tests
+└── jest.config.js      # Jest configuration
 ```
 
 ### 1. Architecture & Consistency
