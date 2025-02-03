@@ -35,7 +35,20 @@ export default function CodeTransformNode({ data, isConnectable, selected }: Cod
               id="code"
               value={data.code}
               onChange={(e) => data.onChange?.('code', e.target.value)}
-              placeholder="// Write your transformation code here..."
+              placeholder={`// IMPORTANT: You must assign to the 'result' variable
+// DO NOT use 'return' statements
+
+// Example 1 (Simple):
+result = 1 + 1;
+
+// Example 2 (Using input):
+result = {
+  originalFact: input['apiCall-1'].fact,
+  wordCount: input['apiCall-1'].fact.split(' ').length
+};
+
+// You can use console.log for debugging:
+console.log('Debug:', input);`}
               className="h-[120px] font-mono resize-none"
             />
           </div>

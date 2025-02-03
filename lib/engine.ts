@@ -45,6 +45,10 @@ export class WorkflowEngine {
 
   // Execute a single node
   private async executeNode(node: Node, context: WorkflowExecutionContext): Promise<any> {
+    if (!node.type) {
+      throw new Error(`Node ${node.id} has no type`);
+    }
+
     const executor = this.nodeExecutors.get(node.type);
     if (!executor) {
       throw new Error(`No executor found for node type: ${node.type}`);
@@ -54,7 +58,7 @@ export class WorkflowEngine {
       const result = await executor.execute(node, context);
       return result;
     } catch (error) {
-      throw new Error(`Error executing node ${node.id}: ${error}`);
+      throw new Error(`Error executing node ${node.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -99,8 +103,8 @@ export class WorkflowEngine {
 
     try {
       // Find start nodes (nodes with no incoming edges)
-      const startNodes = workflow.definition.nodes.filter(node => 
-        !workflow.definition.edges.some(edge => edge.target === node.id)
+      const startNodes = workflow.definition.nodes.filter((node: Node) => 
+        !workflow.definition.edges.some((edge: Edge) => edge.target === node.id)
       );
 
       // Execute workflow starting from each start node
@@ -131,6 +135,7 @@ export class WorkflowEngine {
     } catch (error) {
       context.status = 'failed';
       context.error = error as Error;
+      console.error('Workflow execution failed:', error);
     }
 
     // Log final execution state

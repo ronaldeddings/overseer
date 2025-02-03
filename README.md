@@ -133,6 +133,36 @@ The project has been updated to use a more focused WebSocket architecture:
                   Postgres   Results
    ```
 
+### Recent Updates
+
+#### Code Transform Node Improvements
+1. **Fixed Code Transform Execution**
+   - Updated sandbox environment to properly handle result assignment
+   - Added better error handling and debugging logs
+   - Fixed scope issues with `with` statement in executor
+   - Added clear instructions in the node placeholder
+
+2. **Code Transform Usage**
+   ```javascript
+   // IMPORTANT: Must assign to 'result' variable
+   // DO NOT use 'return' statements
+   
+   // Example 1 (Simple):
+   result = 1 + 1;
+   
+   // Example 2 (Using input):
+   result = {
+     originalFact: input['apiCall-1'].fact,
+     wordCount: input['apiCall-1'].fact.split(' ').length
+   };
+   ```
+
+3. **Debugging Features**
+   - Added detailed console logging in code transform executor
+   - Each log is prefixed with node ID for clarity
+   - Added result validation to ensure it's properly set
+   - Improved error messages for common issues
+
 ---
 
 ## Tech Stack
