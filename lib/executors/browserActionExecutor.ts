@@ -6,22 +6,64 @@ import type { NodeExecutor, WorkflowExecutionContext } from '../engine';
 
 export class BrowserActionExecutor {
   private socketManager: SocketManager;
+  private isServerSide: boolean;
 
   constructor() {
     this.socketManager = SocketManager.getInstance();
+    this.isServerSide = typeof window === 'undefined';
+    console.log(`Initializing BrowserActionExecutor (${this.isServerSide ? 'server' : 'client'} side)`);
   }
 
-  public async execute(action: BrowserAction, workflowId: string, nodeId: string): Promise<any> {
+  public async execute(action: any, workflowId: string, nodeId: string): Promise<any> {
     try {
-      // Validate action
-      if (!action.type || !action.selector) {
-        throw new Error('Browser action requires type and selector');
+      console.log(`Executing browser action:`, { action, workflowId, nodeId, isServerSide: this.isServerSide });
+
+      // Validate and normalize the action object
+      if (typeof action !== 'object' || action === null) {
+        throw new Error('Invalid action: must be an object');
       }
 
-      // Ensure timeout is set
-      if (!action.timeout) {
-        action.timeout = 30000; // Default 30 seconds
+      // Extract the actual action object from the spread string
+      const actionType = action.type || (typeof action[0] === 'string' ? action[0] : null);
+      
+      // Ensure action is a proper object (not a string that got spread)
+      const normalizedAction: BrowserAction = {
+        type: actionType as BrowserAction['type'],
+        selector: action.selector,
+        value: action.value,
+        timeout: action.timeout || 30000,
+        url: action.url
+      };
+
+      console.log('Normalized action:', normalizedAction);
+
+      // Skip connection check on server side as it's handled by SocketManager
+      if (!this.isServerSide && !this.socketManager.isConnected()) {
+        throw new Error(
+          'Chrome extension not connected. Please make sure:\n' +
+          '1. The Overseer extension is installed\n' +
+          '2. The extension is enabled\n' +
+          '3. You have reloaded the page after installing/enabling the extension'
+        );
       }
+
+      // Validate action
+      if (!normalizedAction.type) {
+        throw new Error('Browser action requires type');
+      }
+
+      // Validate based on action type
+      if (normalizedAction.type === 'openTab') {
+        if (!normalizedAction.url) {
+          throw new Error('URL is required for openTab action');
+        }
+      } else {
+        if (!normalizedAction.selector) {
+          throw new Error('Selector is required for this browser action');
+        }
+      }
+
+      console.log('Executing action through WebSocket:', normalizedAction);
 
       // Execute action through WebSocket to extension
       const response = await this.socketManager.executeAction({
@@ -29,22 +71,21 @@ export class BrowserActionExecutor {
         id: uuidv4(),
         workflowId,
         nodeId,
-        action: {
-          type: action.type,
-          selector: action.selector,
-          value: action.value,
-          timeout: action.timeout
-        }
+        action: normalizedAction
       });
 
       if (response.error) {
         throw new Error(response.error);
       }
 
+      console.log('Action response:', response);
+
       // Handle specific action responses
-      switch (action.type) {
+      switch (normalizedAction.type) {
         case 'scrape':
           return { content: response.result };
+        case 'openTab':
+          return { tabId: response.result?.tabId };
         case 'click':
         case 'input':
         case 'wait':
@@ -53,7 +94,9 @@ export class BrowserActionExecutor {
           return response.result;
       }
     } catch (error) {
-      throw new Error(`Browser action failed: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Browser action failed:', errorMessage);
+      throw new Error(`Browser action failed: ${errorMessage}`);
     }
   }
 }

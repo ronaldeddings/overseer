@@ -132,8 +132,14 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
           }
           break
         case 'browserAction':
-          if (!node.data.selector) {
-            throw new Error(`Selector is required for Browser Action node ${node.id}`)
+          if (node.data.action.type === 'openTab') {
+            if (!node.data.action.url) {
+              throw new Error(`URL is required for Browser Action node ${node.id}`)
+            }
+          } else {
+            if (!node.data.action.selector) {
+              throw new Error(`Selector is required for Browser Action node ${node.id}`)
+            }
           }
           break
       }

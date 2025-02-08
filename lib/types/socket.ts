@@ -1,8 +1,9 @@
 export type BrowserAction = {
-  type: 'click' | 'input' | 'scrape' | 'wait';
-  selector: string;
+  type: 'click' | 'input' | 'scrape' | 'wait' | 'openTab';
+  selector?: string;
   value?: string;
   timeout?: number;
+  url?: string;
 };
 
 export type SocketMessage = {

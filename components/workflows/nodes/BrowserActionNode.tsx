@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { BrowserAction } from '@/lib/types/socket';
+import type { BrowserAction } from '@/chrome-extension/src/types';
 
 export interface BrowserActionNodeData {
   action: BrowserAction;
@@ -48,6 +48,13 @@ export default function BrowserActionNode({ data, isConnectable, selected }: Bro
     });
   };
 
+  const handleUrlChange = (value: string) => {
+    data.onChange?.('action', {
+      ...data.action,
+      url: value
+    });
+  };
+
   return (
     <Card className={`w-[300px] bg-white shadow-lg ${selected ? 'ring-2 ring-primary' : ''}`}>
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -72,19 +79,33 @@ export default function BrowserActionNode({ data, isConnectable, selected }: Bro
                 <SelectItem value="input">Type Text</SelectItem>
                 <SelectItem value="wait">Wait for Element</SelectItem>
                 <SelectItem value="scrape">Scrape Content</SelectItem>
+                <SelectItem value="openTab">Open New Tab</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="selector" className="sr-only">CSS Selector</Label>
-            <Input
-              id="selector"
-              value={data.action?.selector || ''}
-              onChange={(e) => handleSelectorChange(e.target.value)}
-              placeholder="#submit-button, .form-input"
-              className="h-8"
-            />
-          </div>
+          {data.action?.type !== 'openTab' ? (
+            <div>
+              <Label htmlFor="selector" className="sr-only">CSS Selector</Label>
+              <Input
+                id="selector"
+                value={data.action?.selector || ''}
+                onChange={(e) => handleSelectorChange(e.target.value)}
+                placeholder="#submit-button, .form-input"
+                className="h-8"
+              />
+            </div>
+          ) : (
+            <div>
+              <Label htmlFor="url" className="sr-only">URL</Label>
+              <Input
+                id="url"
+                value={data.action?.url || ''}
+                onChange={(e) => handleUrlChange(e.target.value)}
+                placeholder="https://example.com"
+                className="h-8"
+              />
+            </div>
+          )}
           {data.action?.type === 'input' && (
             <div>
               <Label htmlFor="value" className="sr-only">Text to Type</Label>
@@ -97,17 +118,19 @@ export default function BrowserActionNode({ data, isConnectable, selected }: Bro
               />
             </div>
           )}
-          <div>
-            <Label htmlFor="timeout" className="sr-only">Timeout (ms)</Label>
-            <Input
-              id="timeout"
-              type="number"
-              value={data.action?.timeout || 30000}
-              onChange={(e) => handleTimeoutChange(e.target.value)}
-              placeholder="Timeout in milliseconds"
-              className="h-8"
-            />
-          </div>
+          {data.action?.type !== 'openTab' && (
+            <div>
+              <Label htmlFor="timeout" className="sr-only">Timeout (ms)</Label>
+              <Input
+                id="timeout"
+                type="number"
+                value={data.action?.timeout || 30000}
+                onChange={(e) => handleTimeoutChange(e.target.value)}
+                placeholder="Timeout in milliseconds"
+                className="h-8"
+              />
+            </div>
+          )}
         </div>
       </CardContent>
       <Handle

@@ -108,30 +108,44 @@ Below is a simplified diagram of Overseer's monolithic approach (MVP).
 
 The project has been updated to use a more focused WebSocket architecture:
 
-1. **Web UI to Server Communication**
-   - Removed WebSocket connections from the web UI
-   - All communication now happens via HTTP endpoints
-   - Workflow execution triggered through `/api/execute/[id]` endpoint
-
-2. **Server to Extension Communication**
+1. **Server to Extension Communication**
    - WebSocket connections (Socket.IO) restricted to Chrome extension only
    - Server validates connection origins
    - Maintains real-time communication for browser automation
    - Extension receives commands and sends results via WebSocket
+   - Global state management for persistent WebSocket connections across API routes
 
-3. **Benefits of the Change**
-   - Cleaner architecture with clear separation of concerns
-   - Reduced complexity in web UI
-   - WebSocket connections only used where necessary
-   - Improved security with origin validation
-   - More efficient resource usage
-
-4. **Communication Flow**
+2. **Communication Flow**
    ```
    Web UI → HTTP → Server → WebSocket → Extension
                      ↑          ↓
                   Postgres   Results
    ```
+
+3. **Browser Action Improvements**
+   - Added support for `openTab` action type
+   - Improved action validation and normalization
+   - Added default timeout of 30 seconds for actions
+   - Enhanced error handling and logging
+   - Type-safe action handling throughout the system
+
+4. **WebSocket Connection Management**
+   - Implemented global state persistence for WebSocket connections
+   - Added connection state tracking and validation
+   - Improved error messages for connection issues
+   - Added detailed logging for debugging
+   - Enhanced reconnection logic
+
+5. **Chrome Extension Updates**
+   - Added proper TypeScript support
+   - Improved message handling and type safety
+   - Enhanced error reporting
+   - Added support for all browser action types:
+     - click: Click on elements
+     - input: Enter text into form fields
+     - scrape: Extract content from elements
+     - wait: Wait for elements to appear
+     - openTab: Open new browser tabs
 
 ### Recent Updates
 

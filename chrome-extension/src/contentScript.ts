@@ -1,130 +1,102 @@
-import type { Message, BrowserAction, BrowserActionResponse } from './types';
+import type { BrowserAction } from './types';
 
-class DOMController {
-  private async findElement(selector: string, timeout: number = 30000): Promise<Element | null> {
+class ContentScriptHandler {
+  private async findElement(selector: string, timeout: number = 30000): Promise<Element> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       const element = document.querySelector(selector);
-      if (element) return element;
+      if (element) {
+        return element;
+      }
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
-    return null;
+
+    throw new Error(`Element not found: ${selector} (timeout: ${timeout}ms)`);
   }
 
-  private async executeClick(action: BrowserAction): Promise<BrowserActionResponse> {
+  async click(action: BrowserAction): Promise<boolean> {
+    if (!action.selector) {
+      throw new Error('Selector is required for click action');
+    }
     const element = await this.findElement(action.selector, action.timeout);
-    
-    if (!element) {
-      return {
-        success: false,
-        error: `Element not found: ${action.selector}`
-      };
+    if (element instanceof HTMLElement) {
+      element.click();
+      return true;
     }
-
-    try {
-      (element as HTMLElement).click();
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to click element: ${error}`
-      };
-    }
+    throw new Error('Element is not clickable');
   }
 
-  private async executeInput(action: BrowserAction): Promise<BrowserActionResponse> {
+  async input(action: BrowserAction): Promise<boolean> {
+    if (!action.selector) {
+      throw new Error('Selector is required for input action');
+    }
     const element = await this.findElement(action.selector, action.timeout);
-    
-    if (!element) {
-      return {
-        success: false,
-        error: `Element not found: ${action.selector}`
-      };
-    }
-
-    if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) {
-      return {
-        success: false,
-        error: 'Element is not an input or textarea'
-      };
-    }
-
-    try {
+    if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
       element.value = action.value || '';
       element.dispatchEvent(new Event('input', { bubbles: true }));
       element.dispatchEvent(new Event('change', { bubbles: true }));
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to set input value: ${error}`
-      };
+      return true;
     }
+    throw new Error('Element is not an input or textarea');
   }
 
-  private async executeScrape(action: BrowserAction): Promise<BrowserActionResponse> {
-    const element = await this.findElement(action.selector, action.timeout);
-    
-    if (!element) {
-      return {
-        success: false,
-        error: `Element not found: ${action.selector}`
-      };
+  async scrape(action: BrowserAction): Promise<string> {
+    if (!action.selector) {
+      throw new Error('Selector is required for scrape action');
     }
+    const element = await this.findElement(action.selector, action.timeout);
+    return element.textContent || '';
+  }
+
+  async wait(action: BrowserAction): Promise<boolean> {
+    if (!action.selector) {
+      throw new Error('Selector is required for wait action');
+    }
+    await this.findElement(action.selector, action.timeout);
+    return true;
+  }
+
+  async execute(action: BrowserAction): Promise<any> {
+    console.log('Executing content script action:', action);
 
     try {
-      const text = element.textContent?.trim();
-      return {
-        success: true,
-        data: text
-      };
+      switch (action.type) {
+        case 'click':
+          return await this.click(action);
+        case 'input':
+          return await this.input(action);
+        case 'scrape':
+          return await this.scrape(action);
+        case 'wait':
+          return await this.wait(action);
+        default:
+          throw new Error(`Unsupported action type: ${action.type}`);
+      }
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to scrape element: ${error}`
-      };
-    }
-  }
-
-  private async executeWait(action: BrowserAction): Promise<BrowserActionResponse> {
-    const element = await this.findElement(action.selector, action.timeout);
-    
-    return element
-      ? { success: true }
-      : {
-          success: false,
-          error: `Timeout waiting for element: ${action.selector}`
-        };
-  }
-
-  public async executeAction(action: BrowserAction): Promise<BrowserActionResponse> {
-    switch (action.type) {
-      case 'click':
-        return this.executeClick(action);
-      case 'input':
-        return this.executeInput(action);
-      case 'scrape':
-        return this.executeScrape(action);
-      case 'wait':
-        return this.executeWait(action);
-      default:
-        return {
-          success: false,
-          error: `Unknown action type: ${(action as any).type}`
-        };
+      console.error('Content script action failed:', error);
+      throw error;
     }
   }
 }
 
-const controller = new DOMController();
-
-console.log('Overseer content script loaded');
+// Initialize handler
+const handler = new ContentScriptHandler();
 
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Content script received message:', message);
-  sendResponse({ received: true });
-  return true;
+
+  if (message.type === 'EXECUTE_ACTION' && message.action) {
+    handler.execute(message.action)
+      .then(result => {
+        console.log('Action executed successfully:', result);
+        sendResponse({ success: true, result });
+      })
+      .catch(error => {
+        console.error('Action execution failed:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep the message channel open for async response
+  }
 }); 

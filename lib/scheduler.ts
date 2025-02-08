@@ -2,6 +2,7 @@ import { CronJob } from 'cron';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
 import { WorkflowEngine } from './engine';
+import { ScheduledWorkflow } from './types/workflow';
 
 export class WorkflowScheduler {
   private jobs: Map<string, CronJob>;
@@ -92,4 +93,14 @@ export class WorkflowScheduler {
 }
 
 // Export singleton instance
-export const scheduler = new WorkflowScheduler(); 
+export const scheduler = new WorkflowScheduler();
+
+export async function loadScheduledWorkflows(): Promise<ScheduledWorkflow[]> {
+  // TODO: Load scheduled workflows from database
+  return [];
+}
+
+export function initializeScheduler(workflows: ScheduledWorkflow[]): void {
+  // TODO: Initialize scheduler with workflows
+  console.log('Initializing scheduler with workflows:', workflows);
+} 

@@ -241,6 +241,11 @@ class SocketClient {
           `
         });
 
+      case 'openTab':
+        if (!action.url) throw new Error('URL is required for openTab action');
+        const newTab = await chrome.tabs.create({ url: action.url });
+        return { tabId: newTab.id };
+
       default:
         throw new Error(`Unsupported action type: ${action.type}`);
     }
