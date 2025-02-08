@@ -1,22 +1,50 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+let supabaseInstance: SupabaseClient<Database> | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Get or create the Supabase client instance
+export function getSupabaseClient(): SupabaseClient<Database> {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return supabaseInstance;
+}
 
-export type Workflow = {
+// Workflow types
+export interface Workflow {
   id: string
   name: string
+  description?: string
   definition: {
     nodes: any[]
     edges: any[]
   }
   created_at?: string
   updated_at?: string
+  is_active?: boolean
+  schedule?: string
 }
 
-export async function saveWorkflow(workflow: Omit<Workflow, 'id' | 'created_at' | 'updated_at'>) {
+// Load workflow
+export async function loadWorkflow(id: string) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('workflows')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Save new workflow
+export async function saveWorkflow(workflow: Partial<Workflow>) {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('workflows')
     .insert(workflow)
@@ -27,7 +55,9 @@ export async function saveWorkflow(workflow: Omit<Workflow, 'id' | 'created_at' 
   return data
 }
 
-export async function updateWorkflow(id: string, workflow: Partial<Omit<Workflow, 'id' | 'created_at' | 'updated_at'>>) {
+// Update existing workflow
+export async function updateWorkflow(id: string, workflow: Partial<Workflow>) {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('workflows')
     .update(workflow)
@@ -39,18 +69,25 @@ export async function updateWorkflow(id: string, workflow: Partial<Omit<Workflow
   return data
 }
 
-export async function loadWorkflow(id: string) {
-  const { data, error } = await supabase
-    .from('workflows')
-    .select()
-    .eq('id', id)
-    .single()
+// Get all workflows
+export async function getAllWorkflows() {
+  const supabase = getSupabaseClient();
+  try {
+    const { data, error } = await supabase
+      .from('workflows')
+      .select('id, name')
+      .order('created_at', { ascending: false });
 
-  if (error) throw error
-  return data as Workflow
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error in getAllWorkflows:', error);
+    throw error;
+  }
 }
 
 export async function deleteWorkflow(id: string) {
+  const supabase = getSupabaseClient();
   const { error } = await supabase
     .from('workflows')
     .delete()

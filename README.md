@@ -213,6 +213,58 @@ The project has been updated to use a more focused WebSocket architecture:
    "0 0 * * *"    // Every day at midnight
    ```
 
+#### SubWorkflow Node Implementation
+1. **Added SubWorkflow Node Support**
+   - Implemented SubWorkflow node type for nested workflow execution
+   - Added proper workflow selection UI with dynamic loading
+   - Implemented circular reference prevention
+   - Added client-side filtering for workflow selection
+
+2. **Workflow Engine Improvements**
+   - Added support for sub-workflow execution
+   - Implemented proper executor registration for sub-workflows
+   - Added parent-child context passing for nested execution
+   - Enhanced error handling for sub-workflow execution
+
+3. **Supabase Client Management**
+   - Implemented singleton pattern for Supabase client
+   - Added `getSupabaseClient()` function for consistent client access
+   - Improved error handling for database operations
+   - Centralized client initialization
+
+4. **Node Types**
+   Current supported node types:
+   - `apiCall`: Make HTTP requests
+   - `codeTransform`: Transform data with JavaScript
+   - `browserAction`: Automate browser actions
+   - `subWorkflow`: Execute nested workflows
+
+5. **Database Schema**
+   ```sql
+   -- Workflows table structure
+   create table if not exists workflows (
+       id uuid primary key default uuid_generate_v4(),
+       name text not null,
+       description text,
+       definition jsonb not null,
+       created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+       updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+       is_active boolean default true,
+       schedule text -- Optional cron schedule
+   );
+
+   -- Execution logs table structure
+   create table if not exists execution_logs (
+       id uuid primary key default uuid_generate_v4(),
+       workflow_id uuid references workflows(id) on delete cascade,
+       status text not null,
+       started_at timestamp with time zone default timezone('utc'::text, now()) not null,
+       completed_at timestamp with time zone,
+       logs jsonb,
+       error text
+   );
+   ```
+
 ---
 
 ## Tech Stack
@@ -514,8 +566,11 @@ Below is a more granular set of tasks for you (and your AI pair) to tackle **one
 ### Phase 2 (Enhanced Features)
 
 1. **Sub-Workflows**  
-   - [ ] Add a node type `sub_workflow` referencing another workflow by ID  
-   - [ ] Engine logic calls `runWorkflow(subWorkflowId)` recursively
+   - [x] Add a node type `sub_workflow` referencing another workflow by ID  
+   - [x] Engine logic calls `runWorkflow(subWorkflowId)` recursively
+   - [x] Prevent circular references
+   - [x] Add proper error handling for sub-workflow execution
+   - [x] Implement parent-child context passing
 
 2. **Branching & Loops**  
    - [ ] Implement a `conditional` node for if/else  

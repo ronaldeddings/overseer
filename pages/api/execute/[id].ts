@@ -1,12 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { WorkflowEngine } from '@/lib/engine';
-import { apiCallExecutor, codeTransformExecutor, browserActionExecutor } from '@/lib/executors';
+import { apiCallExecutor, codeTransformExecutor, browserActionExecutor, subWorkflowExecutor } from '@/lib/executors';
 
 // Initialize and configure the workflow engine
 const engine = new WorkflowEngine();
 engine.registerNodeExecutor(apiCallExecutor);
 engine.registerNodeExecutor(codeTransformExecutor);
 engine.registerNodeExecutor(browserActionExecutor);
+engine.registerNodeExecutor(subWorkflowExecutor);
 
 export default async function handler(
   req: NextApiRequest,

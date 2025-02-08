@@ -20,6 +20,7 @@ import { PlusCircle, Save, Play } from 'lucide-react'
 import ApiCallNode from './nodes/ApiCallNode'
 import CodeTransformNode from './nodes/CodeTransformNode'
 import BrowserActionNode from './nodes/BrowserActionNode'
+import SubWorkflowNode from './nodes/SubWorkflowNode'
 import NodeConfigPanel from './NodeConfigPanel'
 import { loadWorkflow, saveWorkflow, updateWorkflow } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
@@ -28,6 +29,7 @@ const nodeTypes = {
   apiCall: ApiCallNode,
   codeTransform: CodeTransformNode,
   browserAction: BrowserActionNode,
+  subWorkflow: SubWorkflowNode,
 }
 
 const initialNodes: Node[] = []
@@ -142,6 +144,15 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
             }
           }
           break
+        case 'subWorkflow':
+          if (!node.data.workflowId) {
+            throw new Error(`Workflow selection is required for Sub-Workflow node ${node.id}`)
+          }
+          // Prevent circular references
+          if (node.data.workflowId === workflowId) {
+            throw new Error(`Sub-Workflow node ${node.id} cannot reference its own workflow`)
+          }
+          break
       }
     }
   }
@@ -198,7 +209,9 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
       id: `${type}-${nodes.length + 1}`,
       type,
       position,
-      data: {
+      data: type === 'subWorkflow' ? {
+        workflowId: '',
+      } : {
         url: '',
         method: 'GET',
         headers: {},
@@ -284,6 +297,15 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
             >
               <PlusCircle className="h-4 w-4" />
               Browser Action
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => addNode('subWorkflow')}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Sub-Workflow
             </Button>
             <Button
               variant="default"

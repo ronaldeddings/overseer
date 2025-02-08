@@ -5,12 +5,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ApiCallNodeData } from './nodes/ApiCallNode'
 import { CodeTransformNodeData } from './nodes/CodeTransformNode'
 import { BrowserActionNodeData } from './nodes/BrowserActionNode'
+import { SubWorkflowNodeData } from './nodes/SubWorkflowNode'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-type NodeData = ApiCallNodeData | CodeTransformNodeData | BrowserActionNodeData
+type NodeData = ApiCallNodeData | CodeTransformNodeData | BrowserActionNodeData | SubWorkflowNodeData
 
 interface NodeConfigPanelProps {
   selectedNode: Node<NodeData> | null
@@ -148,6 +149,28 @@ export default function NodeConfigPanel({
     )
   }
 
+  const renderSubWorkflowConfig = () => {
+    const data = selectedNode.data as SubWorkflowNodeData
+    return (
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="workflowId">Workflow</Label>
+          <Select
+            value={data.workflowId}
+            onValueChange={(value) => handleDataChange('workflowId', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select workflow" />
+            </SelectTrigger>
+            <SelectContent>
+              {/* Workflow options are handled by the SubWorkflowNode component */}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    )
+  }
+
   const renderNodeConfig = () => {
     switch (selectedNode.type) {
       case 'apiCall':
@@ -156,6 +179,8 @@ export default function NodeConfigPanel({
         return renderCodeTransformConfig()
       case 'browserAction':
         return renderBrowserActionConfig()
+      case 'subWorkflow':
+        return renderSubWorkflowConfig()
       default:
         return null
     }

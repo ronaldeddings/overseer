@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { PlusCircle, Pencil, Trash2 } from 'lucide-react'
-import { supabase, deleteWorkflow } from '@/lib/supabase'
+import { getSupabaseClient, deleteWorkflow } from '@/lib/supabase'
 import type { Workflow } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 
@@ -38,6 +38,7 @@ export default function WorkflowsPage() {
   const loadWorkflows = async () => {
     try {
       setIsLoading(true)
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from('workflows')
         .select('*')

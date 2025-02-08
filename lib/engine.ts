@@ -11,6 +11,10 @@ export type WorkflowExecutionContext = {
   currentNodeId: string | null;
   status: 'running' | 'completed' | 'failed';
   error?: Error;
+  parentContext?: {
+    nodeId: string;
+    results: Record<string, any>;
+  };
 };
 
 export type NodeExecutor = {
