@@ -265,6 +265,67 @@ The project has been updated to use a more focused WebSocket architecture:
    );
    ```
 
+#### Loop Node Implementation
+1. **Loop Node Support**
+   - Added support for both forEach and while loops
+   - Implemented collection iteration for forEach loops
+   - Added condition evaluation for while loops
+   - Added max iterations safety limit
+   - Support body and next connections
+   - Pass loop context to body nodes
+   - Handle loop completion and next node execution
+
+#### Input/Output Management System
+1. **Execution Context**
+   ```typescript
+   type NodeOutput = {
+     id: string
+     type: string
+     data: any
+     timestamp: string
+   }
+
+   type ExecutionContext = {
+     outputs: Record<string, NodeOutput>
+     getNodeOutput: (nodeId: string) => NodeOutput | undefined
+     setNodeOutput: (nodeId: string, output: any) => void
+     getAvailableOutputs: (nodeId: string) => Record<string, NodeOutput>
+   }
+   ```
+
+2. **Context Usage**
+   ```typescript
+   // Example: Using context in a code transform node
+   result = {
+     apiData: context.getNodeOutput('apiCall-1').data,
+     transformedAt: new Date().toISOString()
+   }
+
+   // Example: Template literal in browser action
+   const selector = `[data-id="${context.getNodeOutput('transform-1').data.id}"]`
+   ```
+
+3. **Input Configuration**
+   - Visual input builder with context picker
+   - Support for template literals: `Hello ${context.apiCall-1.data.name}!`
+   - Context badges for selected inputs
+   - Real-time validation and type checking
+   - Autocomplete for context paths
+
+4. **Context Visualization**
+   - Side panel showing available context
+   - Real-time updates during workflow execution
+   - Tree view for nested data structures
+   - Search and filtering capabilities
+   - Type information and documentation
+
+5. **Developer Experience**
+   - TypeScript types for context data
+   - Input validation system
+   - Undo/redo support for input changes
+   - Inline documentation
+   - Autocomplete suggestions
+
 ---
 
 ## Tech Stack
@@ -339,20 +400,24 @@ overseer/
 │           ├── ApiCallNode.tsx      # API call node
 │           ├── CodeTransformNode.tsx # Code transform node
 │           ├── BrowserActionNode.tsx # Browser action node
-│           └── SubWorkflowNode.tsx   # Sub-workflow node
+│           ├── SubWorkflowNode.tsx   # Sub-workflow node
+│           ├── ConditionalNode.tsx   # Conditional node with true/false outputs
+│           └── LoopNode.tsx          # Loop node with forEach/while support
 ├── /hooks               # Custom React hooks
 │   └── use-toast.ts    # Toast notifications hook
 ├── /lib                  
 │   ├── utils.ts          # Helper functions for UI components
 │   ├── supabase.ts       # Supabase client and workflow CRUD operations
 │   ├── /engine           # Workflow execution engine
-│   │   ├── WorkflowEngine.ts  # Main engine implementation
-│   │   └── types.ts      # Engine type definitions
+│   │   ├── WorkflowEngine.ts  # Main engine implementation with node executors
+│   │   └── types.ts      # Engine type definitions including execution context
 │   ├── /executors        # Node type executors
 │   │   ├── ApiCallExecutor.ts    # API call execution
 │   │   ├── CodeTransformExecutor.ts # Code transform execution
 │   │   ├── BrowserActionExecutor.ts # Browser action execution
-│   │   ├── subWorkflowExecutor.ts  # Sub-workflow execution
+│   │   ├── SubWorkflowExecutor.ts  # Sub-workflow execution
+│   │   ├── ConditionalExecutor.ts  # Conditional logic execution
+│   │   ├── LoopExecutor.ts         # Loop execution (forEach/while)
 │   │   └── index.ts      # Executor exports
 │   ├── /websocket        # WebSocket handling
 │   │   ├── WebSocketManager.ts   # WebSocket connection manager
@@ -591,11 +656,33 @@ Below is a more granular set of tasks for you (and your AI pair) to tackle **one
      - [x] Pass loop context to body nodes
      - [x] Handle loop completion and next node execution
 
-3. **UI/UX Enhancements**  
+3. **Input/Output Management**
+   - [ ] Enhance workflow engine for context:
+     - [ ] Create `ExecutionContext` class to manage node outputs
+     - [ ] Implement scoped access to upstream node results
+     - [ ] Add validation for circular dependencies
+     - [ ] Support JSON path notation for nested data access
+   - [ ] Build context visualization components:
+     - [ ] Create `ContextPanel` component with shadcn Sheet
+     - [ ] Add real-time context updates via React state
+     - [ ] Implement context data tree visualization
+     - [ ] Add search and filtering capabilities
+   - [ ] Develop input configuration system:
+     - [ ] Create `InputBuilder` component for visual configuration
+     - [ ] Implement context picker with autocomplete
+     - [ ] Add support for template literals with context variables
+     - [ ] Create `ContextBadge` component for selected inputs
+   - [ ] Implement developer tooling:
+     - [ ] Add TypeScript types for context data
+     - [ ] Create input validation system
+     - [ ] Implement undo/redo stack for input changes
+     - [ ] Add inline documentation components
+
+4. **UI/UX Enhancements**  
    - [ ] More sophisticated node shapes or custom styling in React Flow  
    - [ ] Possibly integrate a code editor component (e.g., Monaco) for code nodes
 
-4. **Improved Error Handling**  
+5. **Improved Error Handling**  
    - [ ] Node-level retries  
    - [ ] Detailed logs for partial successes/failures
 

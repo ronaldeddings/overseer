@@ -56,20 +56,24 @@ overseer/
 │           ├── ApiCallNode.tsx      # API call node
 │           ├── CodeTransformNode.tsx # Code transform node
 │           ├── BrowserActionNode.tsx # Browser action node
-│           └── SubWorkflowNode.tsx   # Sub-workflow node
+│           ├── SubWorkflowNode.tsx   # Sub-workflow node
+│           ├── ConditionalNode.tsx   # Conditional node with true/false outputs
+│           └── LoopNode.tsx          # Loop node with forEach/while support
 ├── /hooks               # Custom React hooks
 │   └── use-toast.ts    # Toast notifications hook
 ├── /lib                  
 │   ├── utils.ts          # Helper functions for UI components
 │   ├── supabase.ts       # Supabase client and workflow CRUD operations
 │   ├── /engine           # Workflow execution engine
-│   │   ├── WorkflowEngine.ts  # Main engine implementation
-│   │   └── types.ts      # Engine type definitions
+│   │   ├── WorkflowEngine.ts  # Main engine implementation with node executors
+│   │   └── types.ts      # Engine type definitions including execution context
 │   ├── /executors        # Node type executors
 │   │   ├── ApiCallExecutor.ts    # API call execution
 │   │   ├── CodeTransformExecutor.ts # Code transform execution
 │   │   ├── BrowserActionExecutor.ts # Browser action execution
-│   │   ├── subWorkflowExecutor.ts  # Sub-workflow execution
+│   │   ├── SubWorkflowExecutor.ts  # Sub-workflow execution
+│   │   ├── ConditionalExecutor.ts  # Conditional logic execution
+│   │   ├── LoopExecutor.ts         # Loop execution (forEach/while)
 │   │   └── index.ts      # Executor exports
 │   ├── /websocket        # WebSocket handling
 │   │   ├── WebSocketManager.ts   # WebSocket connection manager
