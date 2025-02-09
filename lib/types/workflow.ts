@@ -2,6 +2,12 @@ import { Node, Edge } from 'reactflow';
 
 export type NodeType = 'apiCall' | 'codeTransform' | 'browserAction' | 'subWorkflow' | 'conditional' | 'loop';
 
+export interface NodeOutput {
+  id: string;
+  data: any;
+  timestamp: string;
+}
+
 export interface BaseNodeData {
   id?: string;
   onChange?: (id: string, data: any) => void;

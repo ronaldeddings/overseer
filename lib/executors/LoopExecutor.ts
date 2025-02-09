@@ -1,6 +1,7 @@
-import { Node } from 'reactflow';
+import { Node, Edge } from 'reactflow';
 import { LoopNodeData } from '../types/workflow';
-import { WorkflowExecutionContext } from '../engine';
+import { ExecutionContext } from '../engine/ExecutionContext';
+import { NodeExecutor } from './types';
 
 interface ForEachSandboxEnv {
   input: { [key: string]: any };
@@ -12,12 +13,28 @@ interface WhileSandboxEnv {
   result: boolean;
 }
 
-class LoopExecutor {
+class LoopExecutor implements NodeExecutor {
+  readonly type = 'loop' as const;
+  private workflow: { nodes: Node[]; edges: Edge[] };
+
+  constructor() {
+    this.workflow = { nodes: [], edges: [] };
+  }
+
+  private async executeNode(nodeId: string, context: ExecutionContext): Promise<void> {
+    // This should be implemented by the WorkflowEngine
+    throw new Error('executeNode must be implemented by WorkflowEngine');
+  }
+
   async execute(
     node: Node<LoopNodeData>,
-    context: WorkflowExecutionContext,
-    executeNode: (nodeId: string, ctx: WorkflowExecutionContext) => Promise<any>
-  ): Promise<void> {
+    context: ExecutionContext,
+    workflow: { nodes: Node[]; edges: Edge[] },
+    executeNode: (nodeId: string, context: ExecutionContext) => Promise<void>
+  ): Promise<any> {
+    this.workflow = workflow;
+    this.executeNode = executeNode.bind(this);
+
     const { loopType, condition, collection, maxIterations = 100 } = node.data;
     let iterations = 0;
 
@@ -26,7 +43,8 @@ class LoopExecutor {
         // Get the collection to iterate over
         const sandboxEnv: ForEachSandboxEnv = {
           input: Object.fromEntries(
-            Object.entries(context.nodeResults).map(([key, value]) => [key, value.value])
+            Object.entries(context.getAvailableOutputs(node.id))
+              .map(([key, output]) => [key, output.data])
           ),
           result: null
         };
@@ -40,37 +58,36 @@ class LoopExecutor {
 
         // Execute the body for each item
         for (let i = 0; i < items.length && i < maxIterations; i++) {
-          const loopContext: WorkflowExecutionContext = {
-            ...context,
-            loopContext: {
-              iteration: i,
-              totalIterations: items.length,
-              item: items[i],
-              isFirst: i === 0,
-              isLast: i === items.length - 1
-            }
-          };
+          const loopContext = new ExecutionContext(context);
+          loopContext.setNodeOutput('loop', {
+            iteration: i,
+            totalIterations: items.length,
+            item: items[i],
+            isFirst: i === 0,
+            isLast: i === items.length - 1
+          });
 
           // Find and execute all nodes connected to the body handle
-          const bodyEdges = context.edges.filter(edge => 
+          const bodyEdges = this.workflow.edges.filter((edge: Edge) => 
             edge.source === node.id && edge.sourceHandle === 'body'
           );
-          const bodyNodes = context.nodes.filter(n => 
-            bodyEdges.some(edge => edge.target === n.id)
+          const bodyNodes = this.workflow.nodes.filter((n: Node) => 
+            bodyEdges.some((edge: Edge) => edge.target === n.id)
           );
 
           for (const bodyNode of bodyNodes) {
-            await executeNode(bodyNode.id, loopContext);
+            await this.executeNode(bodyNode.id, loopContext);
           }
 
           iterations++;
         }
-      } else if (loopType === 'while') {
+      } else {
         // Execute while condition is true
         while (iterations < maxIterations) {
           const sandboxEnv: WhileSandboxEnv = {
             input: Object.fromEntries(
-              Object.entries(context.nodeResults).map(([key, value]) => [key, value.value])
+              Object.entries(context.getAvailableOutputs(node.id))
+                .map(([key, output]) => [key, output.data])
             ),
             result: false
           };
@@ -81,26 +98,24 @@ class LoopExecutor {
             break;
           }
 
-          const loopContext: WorkflowExecutionContext = {
-            ...context,
-            loopContext: {
-              iteration: iterations,
-              totalIterations: maxIterations,
-              isFirst: iterations === 0,
-              isLast: false
-            }
-          };
+          const loopContext = new ExecutionContext(context);
+          loopContext.setNodeOutput('loop', {
+            iteration: iterations,
+            totalIterations: maxIterations,
+            isFirst: iterations === 0,
+            isLast: false
+          });
 
           // Find and execute all nodes connected to the body handle
-          const bodyEdges = context.edges.filter(edge => 
+          const bodyEdges = this.workflow.edges.filter((edge: Edge) => 
             edge.source === node.id && edge.sourceHandle === 'body'
           );
-          const bodyNodes = context.nodes.filter(n => 
-            bodyEdges.some(edge => edge.target === n.id)
+          const bodyNodes = this.workflow.nodes.filter((n: Node) => 
+            bodyEdges.some((edge: Edge) => edge.target === n.id)
           );
 
           for (const bodyNode of bodyNodes) {
-            await executeNode(bodyNode.id, loopContext);
+            await this.executeNode(bodyNode.id, loopContext);
           }
 
           iterations++;
@@ -110,6 +125,8 @@ class LoopExecutor {
       if (iterations >= maxIterations) {
         console.warn(`Loop reached maximum iterations (${maxIterations})`);
       }
+
+      return { iterations, completed: true };
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Loop node execution failed: ${error.message}`);

@@ -1,5 +1,6 @@
-import { Node } from 'reactflow';
-import type { NodeExecutor, WorkflowExecutionContext } from '../engine';
+import { Node, Edge } from 'reactflow';
+import { NodeExecutor } from './types';
+import { ExecutionContext } from '../engine/ExecutionContext';
 
 export interface ApiCallNodeData {
   url: string;
@@ -8,9 +9,15 @@ export interface ApiCallNodeData {
   body?: any;
 }
 
-export const apiCallExecutor: NodeExecutor = {
-  type: 'apiCall',
-  async execute(node: Node, context: WorkflowExecutionContext) {
+class ApiCallExecutorImpl implements NodeExecutor {
+  readonly type = 'apiCall' as const;
+
+  async execute(
+    node: Node<ApiCallNodeData>,
+    context: ExecutionContext,
+    workflow?: { nodes: Node[]; edges: Edge[] },
+    executeNode?: (nodeId: string, context: ExecutionContext) => Promise<void>
+  ): Promise<any> {
     const { url, method = 'GET', headers = {}, body } = node.data;
 
     try {
@@ -27,9 +34,12 @@ export const apiCallExecutor: NodeExecutor = {
         throw new Error(`API call failed: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      return data;
     } catch (error) {
       throw new Error(`API call error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-}; 
+}
+
+export const apiCallExecutor = new ApiCallExecutorImpl(); 

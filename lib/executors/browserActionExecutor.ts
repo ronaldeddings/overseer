@@ -2,9 +2,15 @@ import type { BrowserAction, SocketMessage } from '../types/socket';
 import { SocketManager } from '../websocket/WebSocketManager';
 import { v4 as uuidv4 } from 'uuid';
 import { Node } from 'reactflow';
-import type { NodeExecutor, WorkflowExecutionContext } from '../engine';
+import { NodeExecutor } from './types';
+import { ExecutionContext } from '../engine/ExecutionContext';
 
-export class BrowserActionExecutor {
+export interface BrowserActionNodeData {
+  action: BrowserAction;
+}
+
+class BrowserActionExecutorImpl implements NodeExecutor {
+  readonly type = 'browserAction' as const;
   private socketManager: SocketManager;
   private isServerSide: boolean;
 
@@ -14,21 +20,24 @@ export class BrowserActionExecutor {
     console.log(`Initializing BrowserActionExecutor (${this.isServerSide ? 'server' : 'client'} side)`);
   }
 
-  public async execute(action: any, workflowId: string, nodeId: string): Promise<any> {
+  public async execute(node: Node<BrowserActionNodeData>, context: ExecutionContext): Promise<any> {
+    const { action } = node.data;
+
+    if (!action || typeof action !== 'object') {
+      throw new Error('Invalid browser action configuration');
+    }
+
     try {
-      console.log(`Executing browser action:`, { action, workflowId, nodeId, isServerSide: this.isServerSide });
+      console.log(`Executing browser action:`, { action, nodeId: node.id, isServerSide: this.isServerSide });
 
       // Validate and normalize the action object
       if (typeof action !== 'object' || action === null) {
         throw new Error('Invalid action: must be an object');
       }
 
-      // Extract the actual action object from the spread string
-      const actionType = action.type || (typeof action[0] === 'string' ? action[0] : null);
-      
-      // Ensure action is a proper object (not a string that got spread)
+      // Ensure action is a proper object
       const normalizedAction: BrowserAction = {
-        type: actionType as BrowserAction['type'],
+        type: action.type,
         selector: action.selector,
         value: action.value,
         timeout: action.timeout || 30000,
@@ -69,8 +78,7 @@ export class BrowserActionExecutor {
       const response = await this.socketManager.executeAction({
         type: 'EXECUTE_ACTION',
         id: uuidv4(),
-        workflowId,
-        nodeId,
+        nodeId: node.id,
         action: normalizedAction
       });
 
@@ -101,26 +109,4 @@ export class BrowserActionExecutor {
   }
 }
 
-const browserActionInstance = new BrowserActionExecutor();
-
-export const browserActionExecutor: NodeExecutor = {
-  type: 'browserAction',
-  async execute(node: Node, context: WorkflowExecutionContext) {
-    const { action } = node.data;
-
-    if (!action || typeof action !== 'object') {
-      throw new Error('Invalid browser action configuration');
-    }
-
-    try {
-      const result = await browserActionInstance.execute(action, context.workflowId, node.id);
-      
-      // Store the result in the context for the next node
-      context.nodeResults[node.id] = result;
-      
-      return result;
-    } catch (error) {
-      throw new Error(`Browser action error: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-}; 
+export const browserActionExecutor = new BrowserActionExecutorImpl(); 

@@ -1,4 +1,6 @@
 import { Node, Edge } from 'reactflow';
+import { NodeType } from '../types/workflow';
+import { ExecutionContext } from './ExecutionContext';
 
 export interface NodeResult {
   value: any;
@@ -26,4 +28,9 @@ export interface ExecutionContext {
   edges: Edge[];
   currentNodeId: string | null;
   status: 'running' | 'completed' | 'failed';
+}
+
+export interface NodeExecutor {
+  type: NodeType;
+  execute(node: Node, context: ExecutionContext): Promise<any>;
 } 

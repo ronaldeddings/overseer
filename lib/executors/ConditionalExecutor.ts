@@ -1,8 +1,11 @@
 import { Node } from 'reactflow';
 import { ConditionalNodeData } from '../types/workflow';
-import { ExecutionContext } from '../engine/types';
+import { ExecutionContext } from '../engine/ExecutionContext';
+import { NodeExecutor } from './types';
 
-class ConditionalExecutor {
+class ConditionalExecutor implements NodeExecutor {
+  readonly type = 'conditional' as const;
+
   async execute(
     node: Node<ConditionalNodeData>,
     context: ExecutionContext
@@ -11,7 +14,8 @@ class ConditionalExecutor {
       // Create a sandbox environment with access to input data
       const sandboxEnv = {
         input: Object.fromEntries(
-          Object.entries(context.nodeResults).map(([key, value]) => [key, value.value])
+          Object.entries(context.getAvailableOutputs(node.id))
+            .map(([key, output]) => [key, output.data])
         ),
         result: false
       };

@@ -1,11 +1,17 @@
 import { Node } from 'reactflow';
-import { NodeExecutor, WorkflowExecutionContext } from '../engine';
-import { SubWorkflowNodeData } from '@/components/workflows/nodes/SubWorkflowNode';
+import { NodeExecutor } from './types';
+import { ExecutionContext } from '../engine/ExecutionContext';
 import { getSupabaseClient } from '@/lib/supabase';
+import { WorkflowEngine } from '../engine/WorkflowEngine';
 
-export const subWorkflowExecutor: NodeExecutor = {
-  type: 'subWorkflow',
-  async execute(node: Node<SubWorkflowNodeData>, context: WorkflowExecutionContext): Promise<any> {
+export interface SubWorkflowNodeData {
+  workflowId: string;
+}
+
+class SubWorkflowExecutorImpl implements NodeExecutor {
+  readonly type = 'subWorkflow' as const;
+
+  async execute(node: Node<SubWorkflowNodeData>, context: ExecutionContext): Promise<any> {
     const { workflowId } = node.data;
     
     if (!workflowId) {
@@ -26,48 +32,19 @@ export const subWorkflowExecutor: NodeExecutor = {
       throw new Error(`Failed to fetch sub-workflow: ${error?.message}`);
     }
 
-    // Create a new context for the sub-workflow
-    const subContext: WorkflowExecutionContext = {
-      workflowId,
-      nodes: workflow.definition.nodes,
-      edges: workflow.definition.edges,
-      nodeResults: {},
-      currentNodeId: null,
-      status: 'running',
-      // Pass parent context's input data to sub-workflow
-      parentContext: {
-        nodeId: node.id,
-        results: context.nodeResults
-      }
-    };
-
     try {
       // Create a new engine instance for the sub-workflow
-      const engine = new (await import('../engine')).WorkflowEngine();
+      const engine = new WorkflowEngine(workflow, context);
       
-      // Register all executors for the sub-workflow
-      const { 
-        apiCallExecutor, 
-        codeTransformExecutor, 
-        browserActionExecutor,
-        subWorkflowExecutor 
-      } = await import('./index');
-      
-      engine.registerNodeExecutor(apiCallExecutor);
-      engine.registerNodeExecutor(codeTransformExecutor);
-      engine.registerNodeExecutor(browserActionExecutor);
-      engine.registerNodeExecutor(subWorkflowExecutor);
-
       // Execute the sub-workflow
-      const result = await engine.runWorkflow(workflowId);
+      await engine.execute();
 
-      if (result.status === 'failed') {
-        throw result.error || new Error('Sub-workflow execution failed');
-      }
-
-      return result.nodeResults;
+      // Return all outputs from the sub-workflow context
+      return engine.getOutputs();
     } catch (error) {
       throw new Error(`Error executing sub-workflow: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-}; 
+}
+
+export const subWorkflowExecutor = new SubWorkflowExecutorImpl(); 

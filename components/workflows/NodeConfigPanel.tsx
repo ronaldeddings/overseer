@@ -1,198 +1,195 @@
 'use client'
 
+import React from 'react'
 import { Node } from 'reactflow'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { ApiCallNodeData } from './nodes/ApiCallNode'
-import { CodeTransformNodeData } from './nodes/CodeTransformNode'
-import { BrowserActionNodeData } from './nodes/BrowserActionNode'
-import { SubWorkflowNodeData } from './nodes/SubWorkflowNode'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-
-type NodeData = ApiCallNodeData | CodeTransformNodeData | BrowserActionNodeData | SubWorkflowNodeData
+import { InputBuilder } from './InputBuilder'
+import { NodeOutput } from '@/lib/types/workflow'
+import { ApiCallNodeData } from '@/lib/executors/apiCallExecutor'
+import { CodeTransformNodeData } from '@/lib/executors/codeTransformExecutor'
+import { BrowserActionNodeData } from '@/lib/executors/browserActionExecutor'
 
 interface NodeConfigPanelProps {
-  selectedNode: Node<NodeData> | null
-  onNodeDataChange: (nodeId: string, data: NodeData) => void
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  node: Node | null
+  availableContext: Record<string, NodeOutput>
+  onClose: () => void
+  onChange: (nodeId: string, data: any) => void
 }
 
-export default function NodeConfigPanel({
-  selectedNode,
-  onNodeDataChange,
-  open,
-  onOpenChange,
+export function NodeConfigPanel({
+  node,
+  availableContext,
+  onClose,
+  onChange
 }: NodeConfigPanelProps) {
-  if (!selectedNode) return null
+  if (!node) return null
 
-  const handleDataChange = (key: string, value: any) => {
-    onNodeDataChange(selectedNode.id, {
-      ...selectedNode.data,
-      [key]: value,
+  const handleChange = (key: string, value: any) => {
+    onChange(node.id, {
+      ...node.data,
+      [key]: value
     })
   }
 
-  const renderApiCallConfig = () => {
-    const data = selectedNode.data as ApiCallNodeData
-    return (
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="url">URL</Label>
-          <Input
-            id="url"
-            value={data.url}
-            onChange={(e) => handleDataChange('url', e.target.value)}
-            placeholder="https://api.example.com"
-          />
-        </div>
-        <div>
-          <Label htmlFor="method">Method</Label>
-          <Select
-            value={data.method}
-            onValueChange={(value) => handleDataChange('method', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select method" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="GET">GET</SelectItem>
-              <SelectItem value="POST">POST</SelectItem>
-              <SelectItem value="PUT">PUT</SelectItem>
-              <SelectItem value="DELETE">DELETE</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="headers">Headers (JSON)</Label>
-          <Textarea
-            id="headers"
-            value={JSON.stringify(data.headers, null, 2)}
-            onChange={(e) => {
-              try {
-                const headers = JSON.parse(e.target.value)
-                handleDataChange('headers', headers)
-              } catch (error) {
-                // Handle invalid JSON
-              }
-            }}
-            placeholder={"{\n  \"Content-Type\": \"application/json\"\n}"}
-            className="font-mono"
-          />
-        </div>
+  const renderApiCallConfig = (data: ApiCallNodeData) => (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">URL</label>
+        <InputBuilder
+          value={data.url || ''}
+          onChange={(value) => handleChange('url', value)}
+          availableContext={availableContext}
+          placeholder="https://api.example.com/endpoint"
+        />
       </div>
-    )
-  }
+      <div>
+        <label className="text-sm font-medium">Method</label>
+        <select
+          value={data.method || 'GET'}
+          onChange={(e) => handleChange('method', e.target.value)}
+          className="w-full rounded-md border border-input bg-background px-3 py-2"
+        >
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+          <option value="PATCH">PATCH</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-sm font-medium">Headers (JSON)</label>
+        <InputBuilder
+          value={JSON.stringify(data.headers || {}, null, 2)}
+          onChange={(value) => {
+            try {
+              handleChange('headers', JSON.parse(value))
+            } catch (e) {
+              // Invalid JSON, ignore
+            }
+          }}
+          availableContext={availableContext}
+          placeholder="{}"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Body (JSON)</label>
+        <InputBuilder
+          value={JSON.stringify(data.body || {}, null, 2)}
+          onChange={(value) => {
+            try {
+              handleChange('body', JSON.parse(value))
+            } catch (e) {
+              // Invalid JSON, ignore
+            }
+          }}
+          availableContext={availableContext}
+          placeholder="{}"
+        />
+      </div>
+    </div>
+  )
 
-  const renderCodeTransformConfig = () => {
-    const data = selectedNode.data as CodeTransformNodeData
-    return (
-      <div className="space-y-4">
+  const renderCodeTransformConfig = (data: CodeTransformNodeData) => (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Code</label>
+        <div className="text-xs text-muted-foreground mb-2">
+          Access previous node outputs via the 'input' object. Must set 'result' variable.
+        </div>
+        <textarea
+          value={data.code || ''}
+          onChange={(e) => handleChange('code', e.target.value)}
+          className="w-full h-48 font-mono text-sm rounded-md border border-input bg-background px-3 py-2"
+          placeholder="// Example:&#10;result = input.apiCall.data.map(item => item.id);"
+        />
+      </div>
+    </div>
+  )
+
+  const renderBrowserActionConfig = (data: BrowserActionNodeData) => (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Action Type</label>
+        <select
+          value={data.action?.type || 'click'}
+          onChange={(e) => handleChange('action', { ...data.action, type: e.target.value })}
+          className="w-full rounded-md border border-input bg-background px-3 py-2"
+        >
+          <option value="click">Click</option>
+          <option value="input">Input Text</option>
+          <option value="scrape">Scrape Content</option>
+          <option value="wait">Wait for Element</option>
+          <option value="openTab">Open Tab</option>
+        </select>
+      </div>
+      {data.action?.type !== 'openTab' && (
         <div>
-          <Label htmlFor="code">Code</Label>
-          <Textarea
-            id="code"
-            value={data.code}
-            onChange={(e) => handleDataChange('code', e.target.value)}
-            placeholder="// Write your transformation code here..."
-            className="min-h-[300px] font-mono"
+          <label className="text-sm font-medium">CSS Selector</label>
+          <InputBuilder
+            value={data.action?.selector || ''}
+            onChange={(value) => handleChange('action', { ...data.action, selector: value })}
+            availableContext={availableContext}
+            placeholder="#element-id or .class-name"
           />
         </div>
-      </div>
-    )
-  }
-
-  const renderBrowserActionConfig = () => {
-    const data = selectedNode.data as BrowserActionNodeData
-    return (
-      <div className="space-y-4">
+      )}
+      {data.action?.type === 'input' && (
         <div>
-          <Label htmlFor="action">Action</Label>
-          <Select
-            value={data.action}
-            onValueChange={(value) => handleDataChange('action', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select action" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="click">Click Element</SelectItem>
-              <SelectItem value="type">Type Text</SelectItem>
-              <SelectItem value="wait">Wait for Element</SelectItem>
-              <SelectItem value="scrape">Scrape Content</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="selector">CSS Selector</Label>
-          <Input
-            id="selector"
-            value={data.selector}
-            onChange={(e) => handleDataChange('selector', e.target.value)}
-            placeholder="#submit-button, .form-input"
+          <label className="text-sm font-medium">Input Value</label>
+          <InputBuilder
+            value={data.action?.value || ''}
+            onChange={(value) => handleChange('action', { ...data.action, value })}
+            availableContext={availableContext}
+            placeholder="Text to input"
           />
         </div>
-        {data.action === 'type' && (
-          <div>
-            <Label htmlFor="value">Text to Type</Label>
-            <Input
-              id="value"
-              value={data.value}
-              onChange={(e) => handleDataChange('value', e.target.value)}
-              placeholder="Enter text..."
-            />
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const renderSubWorkflowConfig = () => {
-    const data = selectedNode.data as SubWorkflowNodeData
-    return (
-      <div className="space-y-4">
+      )}
+      {data.action?.type === 'openTab' && (
         <div>
-          <Label htmlFor="workflowId">Workflow</Label>
-          <Select
-            value={data.workflowId}
-            onValueChange={(value) => handleDataChange('workflowId', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select workflow" />
-            </SelectTrigger>
-            <SelectContent>
-              {/* Workflow options are handled by the SubWorkflowNode component */}
-            </SelectContent>
-          </Select>
+          <label className="text-sm font-medium">URL</label>
+          <InputBuilder
+            value={data.action?.url || ''}
+            onChange={(value) => handleChange('action', { ...data.action, url: value })}
+            availableContext={availableContext}
+            placeholder="https://example.com"
+          />
         </div>
+      )}
+      <div>
+        <label className="text-sm font-medium">Timeout (ms)</label>
+        <input
+          type="number"
+          value={data.action?.timeout || 30000}
+          onChange={(e) => handleChange('action', { ...data.action, timeout: parseInt(e.target.value) })}
+          className="w-full rounded-md border border-input bg-background px-3 py-2"
+          placeholder="30000"
+        />
       </div>
-    )
-  }
+    </div>
+  )
 
   const renderNodeConfig = () => {
-    switch (selectedNode.type) {
+    switch (node.type) {
       case 'apiCall':
-        return renderApiCallConfig()
+        return renderApiCallConfig(node.data as ApiCallNodeData)
       case 'codeTransform':
-        return renderCodeTransformConfig()
+        return renderCodeTransformConfig(node.data as CodeTransformNodeData)
       case 'browserAction':
-        return renderBrowserActionConfig()
-      case 'subWorkflow':
-        return renderSubWorkflowConfig()
+        return renderBrowserActionConfig(node.data as BrowserActionNodeData)
       default:
-        return null
+        return <div>No configuration available for this node type.</div>
     }
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
+    <Sheet open={!!node} onOpenChange={onClose}>
+      <SheetContent side="right" className="w-[400px] sm:w-[540px]">
         <SheetHeader>
-          <SheetTitle>Configure {selectedNode.type}</SheetTitle>
+          <SheetTitle>Configure {node.type} Node</SheetTitle>
         </SheetHeader>
-        <div className="mt-4">{renderNodeConfig()}</div>
+        <div className="py-4">
+          {renderNodeConfig()}
+        </div>
       </SheetContent>
     </Sheet>
   )

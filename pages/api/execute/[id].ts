@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { WorkflowEngine } from '@/lib/engine';
+import { WorkflowEngine } from '@/lib/engine/WorkflowEngine';
 import {
   apiCallExecutor,
   codeTransformExecutor,
@@ -8,25 +8,21 @@ import {
   conditionalExecutor,
   loopExecutor,
 } from '@/lib/executors';
+import { getSupabaseClient } from '@/lib/supabase';
+import { NodeType } from '@/lib/types/workflow';
+import { ExecutionContext } from '@/lib/engine/ExecutionContext';
+import { Node, Edge } from 'reactflow';
 
 // Create an adapter for the loop executor to match the expected signature
 const loopExecutorAdapter = {
-  type: 'loop',
-  execute: async (node: any, context: any) => {
-    // The third argument is a function that executes a node in the context
-    const executeNode = async (nodeId: string, ctx: any) => {
-      const nodeToExecute = context.nodes.find((n: any) => n.id === nodeId);
-      if (!nodeToExecute) {
-        throw new Error(`Node ${nodeId} not found`);
-      }
-      const executor = context.nodeExecutors.get(nodeToExecute.type);
-      if (!executor) {
-        throw new Error(`No executor found for node type: ${nodeToExecute.type}`);
-      }
-      return executor.execute(nodeToExecute, ctx);
-    };
-
-    return loopExecutor.execute(node, context, executeNode);
+  type: 'loop' as NodeType,
+  execute: async (
+    node: Node,
+    context: ExecutionContext,
+    workflow: { nodes: Node[]; edges: Edge[] },
+    executeNode: (nodeId: string) => Promise<void>
+  ) => {
+    return loopExecutor.execute(node, context, workflow, executeNode);
   }
 };
 
@@ -44,39 +40,37 @@ export default async function handler(
   }
 
   try {
-    const engine = new WorkflowEngine();
+    // Get the workflow from Supabase
+    const supabase = getSupabaseClient();
+    const { data: workflow, error } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !workflow) {
+      throw new Error('Failed to load workflow');
+    }
+
+    // Validate workflow definition
+    if (!workflow.definition || !workflow.definition.nodes || workflow.definition.nodes.length === 0) {
+      throw new Error('Invalid workflow: No nodes found in workflow definition');
+    }
+
+    // Create and configure the workflow engine
+    const engine = new WorkflowEngine(workflow.definition);
     
     // Register all executors
-    engine.registerNodeExecutor({
-      type: 'apiCall',
-      execute: apiCallExecutor.execute.bind(apiCallExecutor)
-    });
-    
-    engine.registerNodeExecutor({
-      type: 'codeTransform',
-      execute: codeTransformExecutor.execute.bind(codeTransformExecutor)
-    });
-    
-    engine.registerNodeExecutor({
-      type: 'browserAction',
-      execute: browserActionExecutor.execute.bind(browserActionExecutor)
-    });
-    
-    engine.registerNodeExecutor({
-      type: 'subWorkflow',
-      execute: subWorkflowExecutor.execute.bind(subWorkflowExecutor)
-    });
-    
-    engine.registerNodeExecutor({
-      type: 'conditional',
-      execute: conditionalExecutor.execute.bind(conditionalExecutor)
-    });
-    
-    // Register the loop executor adapter instead of the raw executor
+    engine.registerNodeExecutor(apiCallExecutor);
+    engine.registerNodeExecutor(codeTransformExecutor);
+    engine.registerNodeExecutor(browserActionExecutor);
+    engine.registerNodeExecutor(subWorkflowExecutor);
+    engine.registerNodeExecutor(conditionalExecutor);
     engine.registerNodeExecutor(loopExecutorAdapter);
 
-    const result = await engine.runWorkflow(id);
-    res.status(200).json(result);
+    // Execute the workflow and get the outputs
+    const outputs = await engine.execute();
+    res.status(200).json(outputs);
   } catch (error) {
     console.error('Workflow execution failed:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });

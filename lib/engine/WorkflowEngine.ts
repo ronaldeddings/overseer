@@ -1,130 +1,119 @@
-import { Node, Edge } from 'reactflow';
-import { ExecutionContext } from './types';
+import { Workflow, NodeType } from '../types/workflow';
+import { ExecutionContext } from './ExecutionContext';
+import { interpolateTemplate } from '../utils/template';
+import type { NodeExecutor } from '../executors/types';
 import {
   apiCallExecutor,
   codeTransformExecutor,
   browserActionExecutor,
   subWorkflowExecutor,
   conditionalExecutor,
-  loopExecutor,
+  loopExecutor
 } from '../executors';
 
 export class WorkflowEngine {
-  private nodes: Node[];
-  private edges: Edge[];
+  private workflow: Workflow;
   private context: ExecutionContext;
+  private executors: Map<NodeType, NodeExecutor>;
 
-  constructor(nodes: Node[], edges: Edge[], workflowId: string) {
-    this.nodes = nodes;
-    this.edges = edges;
-    this.context = {
-      workflowId,
-      nodeResults: {},
-      nodes,
-      edges,
-      currentNodeId: null,
-      status: 'running'
-    };
+  constructor(workflow: Workflow, parentContext?: ExecutionContext) {
+    this.workflow = workflow;
+    this.context = new ExecutionContext(parentContext);
+    this.executors = new Map();
   }
 
-  private getNextNodes(nodeId: string): Node[] {
-    const outgoingEdges = this.edges.filter(edge => edge.source === nodeId);
-    return outgoingEdges.map(edge => 
-      this.nodes.find(node => node.id === edge.target)
-    ).filter((node): node is Node => node !== undefined);
+  registerNodeExecutor(executor: NodeExecutor) {
+    this.executors.set(executor.type, executor);
   }
 
-  private getNodesBySourceHandle(nodeId: string, handleId: string): Node[] {
-    const outgoingEdges = this.edges.filter(
-      edge => edge.source === nodeId && edge.sourceHandle === handleId
+  async execute(startNodeId?: string): Promise<Record<string, any>> {
+    // Clear any previous execution data
+    this.context.clear();
+
+    // Validate workflow has nodes
+    if (!this.workflow.nodes || this.workflow.nodes.length === 0) {
+      throw new Error('Workflow has no nodes');
+    }
+
+    const startNode = startNodeId 
+      ? this.workflow.nodes.find(node => node.id === startNodeId)
+      : this.workflow.nodes[0];
+
+    if (!startNode) {
+      throw new Error('Start node not found');
+    }
+
+    await this.executeNode(startNode.id);
+    return this.getOutputs();
+  }
+
+  /**
+   * Get all outputs from the current execution context
+   */
+  getOutputs(): Record<string, any> {
+    const outputs = this.context.getAvailableOutputs('');
+    // Return the data directly from each output
+    return Object.fromEntries(
+      Object.entries(outputs).map(([key, output]) => [key, output.data])
     );
-    return outgoingEdges.map(edge => 
-      this.nodes.find(node => node.id === edge.target)
-    ).filter((node): node is Node => node !== undefined);
   }
 
-  private async executeNode(nodeId: string, context: ExecutionContext = this.context): Promise<any> {
-    const node = this.nodes.find(n => n.id === nodeId);
+  private async executeNode(nodeId: string): Promise<void> {
+    const node = this.workflow.nodes.find(n => n.id === nodeId);
     if (!node) throw new Error(`Node ${nodeId} not found`);
 
     try {
-      context.currentNodeId = nodeId;
-      context.status = 'running';
-      let result;
+      console.log(`Executing node ${nodeId} with inputs:`, this.context.getAvailableOutputs(nodeId));
 
-      switch (node.type) {
-        case 'apiCall':
-          result = await apiCallExecutor.execute(node, context);
-          context.nodeResults[nodeId] = { value: result };
-          break;
-        
-        case 'codeTransform':
-          result = await codeTransformExecutor.execute(node, context);
-          context.nodeResults[nodeId] = { value: result };
-          break;
-        
-        case 'browserAction':
-          result = await browserActionExecutor.execute(node, context);
-          context.nodeResults[nodeId] = { value: result };
-          break;
-        
-        case 'subWorkflow':
-          result = await subWorkflowExecutor.execute(node, context);
-          context.nodeResults[nodeId] = { value: result };
-          break;
-        
-        case 'conditional': {
-          result = await conditionalExecutor.execute(node, context);
-          context.nodeResults[nodeId] = { value: result };
-          const nextNodes = result 
-            ? this.getNodesBySourceHandle(node.id, 'true')
-            : this.getNodesBySourceHandle(node.id, 'false');
-          
-          for (const nextNode of nextNodes) {
-            await this.executeNode(nextNode.id, context);
-          }
-          break;
-        }
-        
-        case 'loop': {
-          await loopExecutor.execute(node, context, this.executeNode.bind(this));
-          context.nodeResults[nodeId] = { value: null, completed: true };
-          // After loop completes, execute nodes connected to 'next'
-          const nextNodes = this.getNodesBySourceHandle(node.id, 'next');
-          for (const nextNode of nextNodes) {
-            await this.executeNode(nextNode.id, context);
-          }
-          break;
-        }
-
-        default:
-          throw new Error(`No executor found for node type: ${node.type}`);
+      // Get the appropriate executor for this node type
+      const executor = this.executors.get(node.type as NodeType);
+      if (!executor) {
+        throw new Error(`No executor found for node type: ${node.type}`);
       }
 
-      context.status = 'completed';
-      return context.nodeResults[nodeId];
+      // Execute the node and store its output
+      const result = await executor.execute(
+        node,
+        this.context,
+        { nodes: this.workflow.nodes, edges: this.workflow.edges },
+        this.executeNode.bind(this)
+      );
+
+      // Store the result directly in the context
+      this.context.setNodeOutput(nodeId, result);
+
+      // Find and execute next nodes
+      const nextNodes = this.workflow.edges
+        .filter(edge => edge.source === nodeId)
+        .map(edge => edge.target);
+
+      for (const nextNodeId of nextNodes) {
+        await this.executeNode(nextNodeId);
+      }
     } catch (error) {
-      context.status = 'failed';
       console.error(`Error executing node ${nodeId}:`, error);
       throw error;
-    } finally {
-      context.currentNodeId = null;
     }
   }
 
-  async execute(): Promise<void> {
-    // Find start nodes (nodes with no incoming edges)
-    const startNodes = this.nodes.filter(node => 
-      !this.edges.some(edge => edge.target === node.id)
-    );
-
-    if (startNodes.length === 0) {
-      throw new Error('No start nodes found in workflow');
+  // Helper method to interpolate template strings in node configurations
+  protected interpolateNodeConfig(config: any): any {
+    if (typeof config === 'string') {
+      return interpolateTemplate(config, this.context);
     }
-
-    // Execute each start node
-    for (const node of startNodes) {
-      await this.executeNode(node.id);
+    
+    if (Array.isArray(config)) {
+      return config.map(item => this.interpolateNodeConfig(item));
     }
+    
+    if (typeof config === 'object' && config !== null) {
+      const result: Record<string, any> = {};
+      for (const [key, value] of Object.entries(config)) {
+        result[key] = this.interpolateNodeConfig(value);
+      }
+      return result;
+    }
+    
+    return config;
   }
 } 

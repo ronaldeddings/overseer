@@ -52,6 +52,8 @@ overseer/
 │   └── /workflows        
 │       ├── WorkflowEditor.tsx  # React Flow editor wrapper
 │       ├── NodeConfigPanel.tsx # Side panel for node configuration
+│       ├── ContextPanel.tsx    # Context visualization panel
+│       ├── InputBuilder.tsx    # Context-aware input builder
 │       └── /nodes         # Node type components
 │           ├── ApiCallNode.tsx      # API call node
 │           ├── CodeTransformNode.tsx # Code transform node
@@ -66,8 +68,10 @@ overseer/
 │   ├── supabase.ts       # Supabase client and workflow CRUD operations
 │   ├── /engine           # Workflow execution engine
 │   │   ├── WorkflowEngine.ts  # Main engine implementation with node executors
+│   │   ├── ExecutionContext.ts # Context management for workflow execution
 │   │   └── types.ts      # Engine type definitions including execution context
 │   ├── /executors        # Node type executors
+│   │   ├── BaseExecutor.ts     # Base executor class with shared functionality
 │   │   ├── ApiCallExecutor.ts    # API call execution
 │   │   ├── CodeTransformExecutor.ts # Code transform execution
 │   │   ├── BrowserActionExecutor.ts # Browser action execution
@@ -78,8 +82,10 @@ overseer/
 │   ├── /websocket        # WebSocket handling
 │   │   ├── WebSocketManager.ts   # WebSocket connection manager
 │   │   └── types.ts      # WebSocket message types
-│   ├── /types            # Shared TypeScript types
+│   ├── /utils            # Utility functions
+│   │   └── template.ts   # Template string interpolation utilities
 │   └── /types            # Shared TypeScript types
+│       └── workflow.ts   # Workflow and node type definitions
 ├── /styles              
 │   └── globals.css       # Global styles and shadcn theme
 ├── /chrome-extension     # Chrome extension (Manifest V3)

@@ -280,16 +280,19 @@ The project has been updated to use a more focused WebSocket architecture:
    ```typescript
    type NodeOutput = {
      id: string
-     type: string
      data: any
      timestamp: string
    }
 
-   type ExecutionContext = {
-     outputs: Record<string, NodeOutput>
-     getNodeOutput: (nodeId: string) => NodeOutput | undefined
-     setNodeOutput: (nodeId: string, output: any) => void
-     getAvailableOutputs: (nodeId: string) => Record<string, NodeOutput>
+   class ExecutionContext {
+     private outputs: Record<string, NodeOutput>;
+     private parentContext?: ExecutionContext;
+
+     getNodeOutput(nodeId: string): NodeOutput | undefined;
+     setNodeOutput(nodeId: string, data: any): void;
+     getAvailableOutputs(nodeId: string): Record<string, NodeOutput>;
+     getValueByPath(path: string): any;
+     clear(): void;
    }
    ```
 
@@ -297,17 +300,20 @@ The project has been updated to use a more focused WebSocket architecture:
    ```typescript
    // Example: Using context in a code transform node
    result = {
-     apiData: context.getNodeOutput('apiCall-1').data,
+     apiData: input['apiCall-1'].data,
      transformedAt: new Date().toISOString()
    }
 
-   // Example: Template literal in browser action
-   const selector = `[data-id="${context.getNodeOutput('transform-1').data.id}"]`
+   // Example: Template literal in API call URL
+   const url = `https://api.example.com/users/${apiCall-1.userId}`
+
+   // Example: Template in browser action selector
+   const selector = `[data-id="${transform-1.data.id}"]`
    ```
 
 3. **Input Configuration**
    - Visual input builder with context picker
-   - Support for template literals: `Hello ${context.apiCall-1.data.name}!`
+   - Support for template literals: `Hello ${apiCall-1.data.name}!`
    - Context badges for selected inputs
    - Real-time validation and type checking
    - Autocomplete for context paths
@@ -396,6 +402,8 @@ overseer/
 │   └── /workflows        
 │       ├── WorkflowEditor.tsx  # React Flow editor wrapper
 │       ├── NodeConfigPanel.tsx # Side panel for node configuration
+│       ├── ContextPanel.tsx    # Context visualization panel
+│       ├── InputBuilder.tsx    # Context-aware input builder
 │       └── /nodes         # Node type components
 │           ├── ApiCallNode.tsx      # API call node
 │           ├── CodeTransformNode.tsx # Code transform node
@@ -410,8 +418,10 @@ overseer/
 │   ├── supabase.ts       # Supabase client and workflow CRUD operations
 │   ├── /engine           # Workflow execution engine
 │   │   ├── WorkflowEngine.ts  # Main engine implementation with node executors
+│   │   ├── ExecutionContext.ts # Context management for workflow execution
 │   │   └── types.ts      # Engine type definitions including execution context
 │   ├── /executors        # Node type executors
+│   │   ├── BaseExecutor.ts     # Base executor class with shared functionality
 │   │   ├── ApiCallExecutor.ts    # API call execution
 │   │   ├── CodeTransformExecutor.ts # Code transform execution
 │   │   ├── BrowserActionExecutor.ts # Browser action execution
@@ -422,8 +432,10 @@ overseer/
 │   ├── /websocket        # WebSocket handling
 │   │   ├── WebSocketManager.ts   # WebSocket connection manager
 │   │   └── types.ts      # WebSocket message types
-│   ├── /types            # Shared TypeScript types
+│   ├── /utils            # Utility functions
+│   │   └── template.ts   # Template string interpolation utilities
 │   └── /types            # Shared TypeScript types
+│       └── workflow.ts   # Workflow and node type definitions
 ├── /styles              
 │   └── globals.css       # Global styles and shadcn theme
 ├── /chrome-extension     # Chrome extension (Manifest V3)
@@ -657,26 +669,26 @@ Below is a more granular set of tasks for you (and your AI pair) to tackle **one
      - [x] Handle loop completion and next node execution
 
 3. **Input/Output Management**
-   - [ ] Enhance workflow engine for context:
-     - [ ] Create `ExecutionContext` class to manage node outputs
-     - [ ] Implement scoped access to upstream node results
-     - [ ] Add validation for circular dependencies
-     - [ ] Support JSON path notation for nested data access
-   - [ ] Build context visualization components:
-     - [ ] Create `ContextPanel` component with shadcn Sheet
-     - [ ] Add real-time context updates via React state
-     - [ ] Implement context data tree visualization
-     - [ ] Add search and filtering capabilities
-   - [ ] Develop input configuration system:
-     - [ ] Create `InputBuilder` component for visual configuration
-     - [ ] Implement context picker with autocomplete
-     - [ ] Add support for template literals with context variables
-     - [ ] Create `ContextBadge` component for selected inputs
-   - [ ] Implement developer tooling:
-     - [ ] Add TypeScript types for context data
-     - [ ] Create input validation system
-     - [ ] Implement undo/redo stack for input changes
-     - [ ] Add inline documentation components
+   - [x] Enhance workflow engine for context:
+     - [x] Create `ExecutionContext` class to manage node outputs
+     - [x] Implement scoped access to upstream node results
+     - [x] Add validation for circular dependencies
+     - [x] Support JSON path notation for nested data access
+   - [x] Build context visualization components:
+     - [x] Create `ContextPanel` component with shadcn Sheet
+     - [x] Add real-time context updates via React state
+     - [x] Implement context data tree visualization
+     - [x] Add search and filtering capabilities
+   - [x] Develop input configuration system:
+     - [x] Create `InputBuilder` component for visual configuration
+     - [x] Implement context picker with autocomplete
+     - [x] Add support for template literals with context variables
+     - [x] Create `ContextBadge` component for selected inputs
+   - [x] Implement developer tooling:
+     - [x] Add TypeScript types for context data
+     - [x] Create input validation system
+     - [x] Implement undo/redo stack for input changes
+     - [x] Add inline documentation components
 
 4. **UI/UX Enhancements**  
    - [ ] More sophisticated node shapes or custom styling in React Flow  

@@ -1,14 +1,16 @@
 import { Node } from 'reactflow';
-import type { NodeExecutor, WorkflowExecutionContext } from '../engine';
+import { NodeExecutor } from './types';
+import { ExecutionContext } from '../engine/ExecutionContext';
 
 export interface CodeTransformNodeData {
   code: string;
   language: string;
 }
 
-export const codeTransformExecutor: NodeExecutor = {
-  type: 'codeTransform',
-  async execute(node: Node<CodeTransformNodeData>, context: WorkflowExecutionContext) {
+class CodeTransformExecutorImpl implements NodeExecutor {
+  readonly type = 'codeTransform' as const;
+
+  async execute(node: Node<CodeTransformNodeData>, context: ExecutionContext): Promise<any> {
     const { code } = node.data;
 
     if (!code) {
@@ -18,7 +20,10 @@ export const codeTransformExecutor: NodeExecutor = {
     try {
       // Create a safe context with access to previous node results
       const sandbox = {
-        input: context.nodeResults,
+        input: Object.fromEntries(
+          Object.entries(context.getAvailableOutputs(node.id))
+            .map(([key, output]) => [key, output.data])
+        ),
         result: null,
         console: {
           log: (...args: any[]) => console.log(`[CodeTransform ${node.id}]:`, ...args),
@@ -55,4 +60,6 @@ export const codeTransformExecutor: NodeExecutor = {
       throw new Error(`Code transform error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-}; 
+}
+
+export const codeTransformExecutor = new CodeTransformExecutorImpl(); 
