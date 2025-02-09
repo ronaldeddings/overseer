@@ -71,4 +71,4 @@ logs
 .supabase/
 
 # AI Messages
-..specstory/
+.specstory/
