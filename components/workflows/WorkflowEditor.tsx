@@ -24,13 +24,17 @@ import SubWorkflowNode from './nodes/SubWorkflowNode'
 import NodeConfigPanel from './NodeConfigPanel'
 import { loadWorkflow, saveWorkflow, updateWorkflow } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { ConditionalNode } from './nodes/ConditionalNode'
+import { LoopNode } from './nodes/LoopNode'
 
 const nodeTypes = {
   apiCall: ApiCallNode,
   codeTransform: CodeTransformNode,
   browserAction: BrowserActionNode,
   subWorkflow: SubWorkflowNode,
-}
+  conditional: ConditionalNode,
+  loop: LoopNode,
+} as const
 
 const initialNodes: Node[] = []
 const initialEdges: Edge[] = []
@@ -153,6 +157,34 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
             throw new Error(`Sub-Workflow node ${node.id} cannot reference its own workflow`)
           }
           break
+        case 'conditional':
+          if (!node.data.condition?.trim()) {
+            throw new Error(`Condition is required for Conditional node ${node.id}`)
+          }
+          // Validate that the node has at least one outgoing edge
+          const conditionalEdges = edges.filter(edge => edge.source === node.id)
+          if (conditionalEdges.length === 0) {
+            throw new Error(`Conditional node ${node.id} must have at least one outgoing connection`)
+          }
+          break
+        case 'loop':
+          if (node.data.loopType === 'forEach') {
+            if (!node.data.collection?.trim()) {
+              throw new Error(`Collection is required for Loop node ${node.id}`)
+            }
+          } else if (node.data.loopType === 'while') {
+            if (!node.data.condition?.trim()) {
+              throw new Error(`Condition is required for Loop node ${node.id}`)
+            }
+          }
+          // Validate that the node has a body connection
+          const bodyEdges = edges.filter(edge => 
+            edge.source === node.id && edge.sourceHandle === 'body'
+          )
+          if (bodyEdges.length === 0) {
+            throw new Error(`Loop node ${node.id} must have a body connection`)
+          }
+          break
       }
     }
   }
@@ -203,31 +235,6 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
     [setEdges]
   )
 
-  const addNode = useCallback((type: string) => {
-    const position = { x: 100, y: nodes.length * 150 }
-    const newNode: Node = {
-      id: `${type}-${nodes.length + 1}`,
-      type,
-      position,
-      data: type === 'subWorkflow' ? {
-        workflowId: '',
-      } : {
-        url: '',
-        method: 'GET',
-        headers: {},
-        code: '',
-        language: 'javascript',
-        action: 'click',
-        selector: '',
-      },
-    }
-    setNodes((nds) => [...nds, newNode])
-  }, [nodes, setNodes])
-
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    setSelectedNode(node)
-  }, [])
-
   const handleNodeDataChange = useCallback((nodeId: string, newData: any) => {
     setNodes((nds) =>
       nds.map((node) =>
@@ -253,12 +260,76 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
               data: {
                 ...node.data,
                 [key]: value,
+                id: node.id,
+                onChange: handleNodeDataChange,
+                onConfigure: node.data.onConfigure,
               },
             }
           : node
       )
     )
-  }, [setNodes])
+  }, [setNodes, handleNodeDataChange])
+
+  const addNode = useCallback((type: string) => {
+    const position = { x: 100, y: nodes.length * 150 }
+    const nodeId = `${type}-${nodes.length + 1}`
+    const newNode: Node = {
+      id: nodeId,
+      type,
+      position,
+      data: {
+        ...(() => {
+          switch (type) {
+            case 'subWorkflow':
+              return {
+                workflowId: '',
+              };
+            case 'conditional':
+              return {
+                type: 'conditional',
+                condition: '',
+              };
+            case 'loop':
+              return {
+                type: 'loop',
+                loopType: 'forEach',
+                condition: '',
+                collection: '',
+                maxIterations: 100,
+              };
+            case 'apiCall':
+              return {
+                url: '',
+                method: 'GET',
+                headers: {},
+              };
+            case 'codeTransform':
+              return {
+                code: '',
+                language: 'javascript',
+              };
+            case 'browserAction':
+              return {
+                action: {
+                  type: 'click',
+                  selector: '',
+                },
+              };
+            default:
+              return {};
+          }
+        })(),
+        id: nodeId,
+        onChange: handleNodeDataChange,
+        onConfigure: () => handleConfigureClick(nodeId),
+      }
+    }
+    setNodes((nds) => [...nds, newNode])
+  }, [nodes, setNodes, handleNodeDataChange, handleConfigureClick])
+
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node)
+  }, [])
 
   return (
     <div className="h-full w-full relative">
@@ -308,6 +379,24 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
               Sub-Workflow
             </Button>
             <Button
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => addNode('conditional')}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Conditional
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => addNode('loop')}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Loop
+            </Button>
+            <Button
               variant="default"
               size="sm"
               className="gap-2"
@@ -344,8 +433,9 @@ export default function WorkflowEditor({ workflowId }: WorkflowEditorProps) {
           ...node,
           data: {
             ...node.data,
+            id: node.id,
+            onChange: handleNodeDataChange,
             onConfigure: () => handleConfigureClick(node.id),
-            onChange: (key: string, value: any) => handleInputChange(node.id, key, value),
           }
         }))}
         edges={edges}

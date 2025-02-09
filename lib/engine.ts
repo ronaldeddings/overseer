@@ -15,6 +15,14 @@ export type WorkflowExecutionContext = {
     nodeId: string;
     results: Record<string, any>;
   };
+  loopContext?: {
+    iteration: number;
+    totalIterations: number;
+    item?: any;
+    isFirst?: boolean;
+    isLast?: boolean;
+  };
+  nodeExecutors?: Map<string, NodeExecutor>;
 };
 
 export type NodeExecutor = {
@@ -48,9 +56,49 @@ export class WorkflowEngine {
   }
 
   // Get all output nodes that this node connects to
-  private getOutputNodes(nodeId: string, nodes: Node[], edges: Edge[]): Node[] {
+  private getOutputNodes(nodeId: string, nodes: Node[], edges: Edge[], context: WorkflowExecutionContext): Node[] {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return [];
+
+    // For conditional nodes, only get nodes connected to the appropriate handle based on the result
+    if (node.type === 'conditional') {
+      const result = context.nodeResults[nodeId]?.value;
+      const handleId = result ? 'true' : 'false';
+      const outgoingEdges = edges.filter(edge => 
+        edge.source === nodeId && edge.sourceHandle === handleId
+      );
+      return nodes.filter(node => 
+        outgoingEdges.some(edge => edge.target === node.id)
+      );
+    }
+
+    // For loop nodes, get nodes connected to the 'body' handle during iteration
+    // and nodes connected to the 'next' handle after completion
+    if (node.type === 'loop') {
+      if (context.loopContext) {
+        // During loop iteration, only follow body connections
+        const outgoingEdges = edges.filter(edge => 
+          edge.source === nodeId && edge.sourceHandle === 'body'
+        );
+        return nodes.filter(node => 
+          outgoingEdges.some(edge => edge.target === node.id)
+        );
+      } else {
+        // After loop completion, only follow next connections
+        const outgoingEdges = edges.filter(edge => 
+          edge.source === nodeId && edge.sourceHandle === 'next'
+        );
+        return nodes.filter(node => 
+          outgoingEdges.some(edge => edge.target === node.id)
+        );
+      }
+    }
+
+    // For all other nodes, get all connected nodes
     const outgoingEdges = edges.filter(edge => edge.source === nodeId);
-    return nodes.filter(node => outgoingEdges.some(edge => edge.target === node.id));
+    return nodes.filter(node => 
+      outgoingEdges.some(edge => edge.target === node.id)
+    );
   }
 
   // Get nodes that have no incoming edges
@@ -72,7 +120,8 @@ export class WorkflowEngine {
 
     return {
       ...context,
-      nodeResults
+      nodeResults,
+      nodeExecutors: this.nodeExecutors
     };
   }
 
@@ -92,8 +141,29 @@ export class WorkflowEngine {
       const nodeContext = this.createNodeContext(node, context);
       console.log(`Executing node ${node.id} with inputs:`, nodeContext.nodeResults);
       
-      const result = await executor.execute(node, nodeContext);
-      return result;
+      if (node.type === 'loop') {
+        // For loop nodes, pass the executeNode function with access to nodeExecutors
+        const executeNodeInLoop = async (nodeId: string, ctx: WorkflowExecutionContext) => {
+          const loopNode = context.nodes.find((n: Node) => n.id === nodeId);
+          if (!loopNode || !loopNode.type) throw new Error(`Node ${nodeId} not found or has no type`);
+          
+          const loopNodeExecutor = ctx.nodeExecutors?.get(loopNode.type);
+          if (!loopNodeExecutor) {
+            throw new Error(`No executor found for node type: ${loopNode.type}`);
+          }
+          
+          const result = await loopNodeExecutor.execute(loopNode, ctx);
+          ctx.nodeResults[nodeId] = { value: result };
+          return result;
+        };
+        
+        await (executor as any).execute(node, nodeContext, executeNodeInLoop.bind(this));
+        return null;
+      } else {
+        const result = await executor.execute(node, nodeContext);
+        context.nodeResults[node.id] = { value: result };
+        return result;
+      }
     } catch (error) {
       throw new Error(`Error executing node ${node.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -135,7 +205,8 @@ export class WorkflowEngine {
       edges: workflow.definition.edges,
       nodeResults: {},
       currentNodeId: null,
-      status: 'running'
+      status: 'running',
+      nodeExecutors: this.nodeExecutors
     };
 
     try {
@@ -162,11 +233,11 @@ export class WorkflowEngine {
         // Execute current node
         context.currentNodeId = node.id;
         const result = await this.executeNode(node, context);
-        context.nodeResults[node.id] = result;
+        context.nodeResults[node.id] = { value: result };
         executedNodes.add(node.id);
         
-        // Execute output nodes
-        const outputNodes = this.getOutputNodes(node.id, context.nodes, context.edges);
+        // Execute output nodes based on node type and result
+        const outputNodes = this.getOutputNodes(node.id, context.nodes, context.edges, context);
         for (const outputNode of outputNodes) {
           await executeNodeAndDescendants(outputNode);
         }

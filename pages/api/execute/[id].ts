@@ -1,51 +1,84 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { WorkflowEngine } from '@/lib/engine';
-import { apiCallExecutor, codeTransformExecutor, browserActionExecutor, subWorkflowExecutor } from '@/lib/executors';
+import {
+  apiCallExecutor,
+  codeTransformExecutor,
+  browserActionExecutor,
+  subWorkflowExecutor,
+  conditionalExecutor,
+  loopExecutor,
+} from '@/lib/executors';
 
-// Initialize and configure the workflow engine
-const engine = new WorkflowEngine();
-engine.registerNodeExecutor(apiCallExecutor);
-engine.registerNodeExecutor(codeTransformExecutor);
-engine.registerNodeExecutor(browserActionExecutor);
-engine.registerNodeExecutor(subWorkflowExecutor);
+// Create an adapter for the loop executor to match the expected signature
+const loopExecutorAdapter = {
+  type: 'loop',
+  execute: async (node: any, context: any) => {
+    // The third argument is a function that executes a node in the context
+    const executeNode = async (nodeId: string, ctx: any) => {
+      const nodeToExecute = context.nodes.find((n: any) => n.id === nodeId);
+      if (!nodeToExecute) {
+        throw new Error(`Node ${nodeId} not found`);
+      }
+      const executor = context.nodeExecutors.get(nodeToExecute.type);
+      if (!executor) {
+        throw new Error(`No executor found for node type: ${nodeToExecute.type}`);
+      }
+      return executor.execute(nodeToExecute, ctx);
+    };
+
+    return loopExecutor.execute(node, context, executeNode);
+  }
+};
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { id } = req.query;
+  if (!id || typeof id !== 'string') {
+    return res.status(400).json({ error: 'Invalid workflow ID' });
+  }
+
   try {
-    const { id } = req.query;
-
-    if (!id || Array.isArray(id)) {
-      return res.status(400).json({ error: 'Invalid workflow ID' });
-    }
-
-    // Execute the workflow
-    const result = await engine.runWorkflow(id);
-
-    // Return appropriate response based on execution status
-    if (result.status === 'completed') {
-      return res.status(200).json({
-        status: result.status,
-        nodeResults: result.nodeResults,
-      });
-    } else {
-      return res.status(500).json({
-        status: result.status,
-        error: result.error?.message,
-        nodeResults: result.nodeResults,
-      });
-    }
-  } catch (error) {
-    console.error('Workflow execution error:', error);
-    return res.status(500).json({
-      status: 'failed',
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    const engine = new WorkflowEngine();
+    
+    // Register all executors
+    engine.registerNodeExecutor({
+      type: 'apiCall',
+      execute: apiCallExecutor.execute.bind(apiCallExecutor)
     });
+    
+    engine.registerNodeExecutor({
+      type: 'codeTransform',
+      execute: codeTransformExecutor.execute.bind(codeTransformExecutor)
+    });
+    
+    engine.registerNodeExecutor({
+      type: 'browserAction',
+      execute: browserActionExecutor.execute.bind(browserActionExecutor)
+    });
+    
+    engine.registerNodeExecutor({
+      type: 'subWorkflow',
+      execute: subWorkflowExecutor.execute.bind(subWorkflowExecutor)
+    });
+    
+    engine.registerNodeExecutor({
+      type: 'conditional',
+      execute: conditionalExecutor.execute.bind(conditionalExecutor)
+    });
+    
+    // Register the loop executor adapter instead of the raw executor
+    engine.registerNodeExecutor(loopExecutorAdapter);
+
+    const result = await engine.runWorkflow(id);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Workflow execution failed:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
 } 

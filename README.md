@@ -577,8 +577,19 @@ Below is a more granular set of tasks for you (and your AI pair) to tackle **one
    - [x] Implement parent-child context passing
 
 2. **Branching & Loops**  
-   - [ ] Implement a `conditional` node for if/else  
-   - [ ] Implement a `loop/iterate` node (or code node that maps over array)
+   - [x] Implement a `conditional` node for if/else:
+     - [x] Add conditional node type with true/false outputs
+     - [x] Implement condition evaluation in sandbox environment
+     - [x] Support dynamic routing based on condition result
+     - [x] Add proper error handling for condition evaluation
+   - [x] Implement a `loop` node:
+     - [x] Support both forEach and while loop types
+     - [x] Add collection iteration for forEach loops
+     - [x] Add condition evaluation for while loops
+     - [x] Implement max iterations safety limit
+     - [x] Support body and next connections
+     - [x] Pass loop context to body nodes
+     - [x] Handle loop completion and next node execution
 
 3. **UI/UX Enhancements**  
    - [ ] More sophisticated node shapes or custom styling in React Flow  
