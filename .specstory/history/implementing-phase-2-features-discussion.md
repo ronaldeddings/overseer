@@ -2658,11 +2658,45 @@ Let me update the checklist section to reflect our progress with the SubWorkflow
 
 _****_
 
-
+```diff
+  
+  1. **Sub-Workflows**  
+-    - [ ] Add a node type `sub_workflow` referencing another workflow by ID  
+-    - [ ] Engine logic calls `runWorkflow(subWorkflowId)` recursively
++    - [x] Add a node type `sub_workflow` referencing another workflow by ID  
++    - [x] Engine logic calls `runWorkflow(subWorkflowId)` recursively
++    - [x] Prevent circular references
++    - [x] Add proper error handling for sub-workflow execution
++    - [x] Implement parent-child context passing
+  
+  2. **Branching & Loops**  
+```
 
 ---
 
 _****_
+
+
+
+I've updated the Phase 2 checklist to mark the SubWorkflow tasks as completed and added some additional completed items that we implemented:
+- Added checkmark for the basic SubWorkflow node implementation
+- Added checkmark for the recursive workflow execution
+- Added and checked off three new items we implemented:
+  - Circular reference prevention
+  - Error handling for sub-workflows
+  - Parent-child context passing
+
+All other sections of the README remain unchanged. Let me know if you'd like me to make any other adjustments!
+
+---
+
+_**User**_
+
+Please update @README.md project structure with ONLY things that we've worked on (do not remove anything unless we specifically removed it together)
+
+---
+
+_**Assistant**_
 
 
 

@@ -307,7 +307,8 @@ overseer/
 ├── .env                    # Environment variables for local dev
 ├── supabase/              # Supabase configuration
 │   ├── migrations/        # Database migrations
-│   │   └── 20240319000000_initial_schema.sql  # Initial schema
+│   │   ├── 20240319000000_initial_schema.sql  # Initial schema
+│   │   └── 20240320000000_add_get_all_workflows_function.sql  # Get workflows function
 │   └── config.toml       # Supabase configuration
 ├── .vscode/              # VS Code settings
 │   └── settings.json     # Deno settings for Supabase
@@ -337,7 +338,8 @@ overseer/
 │       └── /nodes         # Node type components
 │           ├── ApiCallNode.tsx      # API call node
 │           ├── CodeTransformNode.tsx # Code transform node
-│           └── BrowserActionNode.tsx # Browser action node
+│           ├── BrowserActionNode.tsx # Browser action node
+│           └── SubWorkflowNode.tsx   # Sub-workflow node
 ├── /hooks               # Custom React hooks
 │   └── use-toast.ts    # Toast notifications hook
 ├── /lib                  
@@ -349,7 +351,9 @@ overseer/
 │   ├── /executors        # Node type executors
 │   │   ├── ApiCallExecutor.ts    # API call execution
 │   │   ├── CodeTransformExecutor.ts # Code transform execution
-│   │   └── BrowserActionExecutor.ts # Browser action execution
+│   │   ├── BrowserActionExecutor.ts # Browser action execution
+│   │   ├── subWorkflowExecutor.ts  # Sub-workflow execution
+│   │   └── index.ts      # Executor exports
 │   ├── /websocket        # WebSocket handling
 │   │   ├── WebSocketManager.ts   # WebSocket connection manager
 │   │   └── types.ts      # WebSocket message types

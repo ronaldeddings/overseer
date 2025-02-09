@@ -69,3 +69,6 @@ logs
 
 # Supabase
 .supabase/
+
+# AI Messages
+..specstory/
