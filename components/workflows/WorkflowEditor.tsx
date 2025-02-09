@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect, useMemo } from 'react'
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -190,6 +190,10 @@ export function WorkflowEditor({ workflowId, initialNodes = [], initialEdges = [
   )
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    // Don't set selectedNode here - we only want to do that when configure is clicked
+  }, [])
+
+  const handleNodeConfigure = useCallback((node: Node) => {
     setSelectedNode(node)
   }, [])
 
@@ -209,6 +213,19 @@ export function WorkflowEditor({ workflowId, initialNodes = [], initialEdges = [
       })
     )
   }, [setNodes])
+
+  // Add onConfigure to each node's data
+  const nodesWithConfig = useMemo(() => 
+    nodes.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        onConfigure: () => handleNodeConfigure(node),
+        onChange: (key: string, value: any) => handleNodeDataChange(node.id, { [key]: value }),
+        availableContext: outputs
+      }
+    }))
+  , [nodes, handleNodeConfigure, handleNodeDataChange, outputs])
 
   return (
     <div className="h-full w-full relative">
@@ -246,7 +263,7 @@ export function WorkflowEditor({ workflowId, initialNodes = [], initialEdges = [
       </div>
 
       <ReactFlow
-        nodes={nodes}
+        nodes={nodesWithConfig}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}

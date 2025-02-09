@@ -10,7 +10,9 @@ export interface NodeOutput {
 
 export interface BaseNodeData {
   id?: string;
-  onChange?: (id: string, data: any) => void;
+  onChange?: (key: string, value: any) => void;
+  onConfigure?: () => void;
+  availableContext?: Record<string, NodeOutput>;
 }
 
 export interface ConditionalNodeData extends BaseNodeData {

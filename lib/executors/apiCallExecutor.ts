@@ -1,6 +1,7 @@
 import { Node, Edge } from 'reactflow';
 import { NodeExecutor } from './types';
 import { ExecutionContext } from '../engine/ExecutionContext';
+import { interpolateTemplate } from '../utils/template';
 
 export interface ApiCallNodeData {
   url: string;
@@ -21,7 +22,23 @@ class ApiCallExecutorImpl implements NodeExecutor {
     const { url, method = 'GET', headers = {}, body } = node.data;
 
     try {
-      const response = await fetch(url, {
+      // Handle both direct input references and template strings
+      let interpolatedUrl = url;
+      if (url.includes("input['")) {
+        // Handle input reference with possible concatenation
+        interpolatedUrl = url.replace(/input\['([^']+)'\]/, (match, nodeId) => {
+          const nodeOutput = context.getAvailableOutputs(node.id)[nodeId];
+          if (!nodeOutput) {
+            throw new Error(`No output found for node ${nodeId}`);
+          }
+          return nodeOutput.data;
+        });
+      } else {
+        // Handle template strings
+        interpolatedUrl = interpolateTemplate(url, context);
+      }
+
+      const response = await fetch(interpolatedUrl, {
         method,
         headers: {
           'Content-Type': 'application/json',

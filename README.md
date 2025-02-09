@@ -149,33 +149,46 @@ The project has been updated to use a more focused WebSocket architecture:
 
 ### Recent Updates
 
-#### Code Transform Node Improvements
-1. **Fixed Code Transform Execution**
-   - Updated sandbox environment to properly handle result assignment
-   - Added better error handling and debugging logs
-   - Fixed scope issues with `with` statement in executor
-   - Added clear instructions in the node placeholder
+#### API Call Node Improvements
+1. **Enhanced Context Variable Support**
+   - Added support for both template strings and direct input references
+   - Improved URL interpolation handling
+   - Added context picker UI with braces icon
+   - Support for concatenating text with input references
 
-2. **Code Transform Usage**
+2. **URL Handling Methods**
    ```javascript
-   // IMPORTANT: Must assign to 'result' variable
-   // DO NOT use 'return' statements
+   // Method 1: Direct Input Reference
+   input['nodeId']  // Uses entire output from previous node
    
-   // Example 1 (Simple):
-   result = 1 + 1;
+   // Method 2: Template String
+   https://api.example.com/${nodeId.data}  // Interpolates specific data
    
-   // Example 2 (Using input):
-   result = {
-     originalFact: input['apiCall-1'].fact,
-     wordCount: input['apiCall-1'].fact.split(' ').length
-   };
+   // Method 3: Concatenation
+   input['nodeId']suffix  // Combines node output with additional text
+   prefix-input['nodeId']-suffix  // Full concatenation support
    ```
 
-3. **Debugging Features**
-   - Added detailed console logging in code transform executor
-   - Each log is prefixed with node ID for clarity
-   - Added result validation to ensure it's properly set
-   - Improved error messages for common issues
+3. **Context Selection**
+   - Added cursor position tracking for precise insertions
+   - Implemented smart context filtering to show only preceding nodes
+   - Added support for both full value replacement and partial insertions
+   - Improved error handling for missing node outputs
+
+4. **Code Transform Context Handling**
+   - Fixed template string interpolation in code transform outputs
+   - Improved access to nested data properties
+   - Enhanced error messages for context-related issues
+   - Added proper data property access in template strings
+
+5. **Usage Examples**
+   ```javascript
+   // API Call URL Examples:
+   https://api.example.com/users/${previousNode.data.userId}  // Template string
+   input['apiCall-1']  // Direct input reference
+   input['codeTransform-2']?key=value  // With query parameters
+   https://api.example.com/users/input['userNode']/details  // Mixed usage
+   ```
 
 #### Basic Scheduling Implementation
 1. **Workflow Scheduler Service**
